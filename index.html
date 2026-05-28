@@ -1,0 +1,2796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Clayton Connect — Backhaul Matcher</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  /* ── CLAYTON BRAND FONTS (Cina GEO closest match: DM Sans / Nunito Sans) ── */
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,400;1,400&display=swap');
+
+  /* ── CLAYTON BRAND COLORS (Brand Guidelines p.32) ── */
+  :root {
+    --clayton-blue:   #0071C8;   /* Primary — PMS 285 C */
+    --navy:           #022D4D;   /* Navy — PMS 648 C */
+    --sky-blue:       #C1D2E5;   /* Sky Blue — PMS 657 C */
+    --sky-40:         #E6EDF5;   /* Sky Blue 40% tint */
+    --sky-20:         #F3F6FA;   /* Sky Blue 20% tint */
+    --clayton-green:  #99BF4E;   /* Clayton Green — PMS 298 C */
+    --olive:          #333528;   /* Olive — PMS 4229 C */
+    --warm-white:     #EDE6DB;   /* Warm White — PMS 7527 C */
+    --warm-80:        #F1EBE2;   /* Warm White 80% tint */
+    --warm-40:        #F8F5F1;   /* Warm White 40% tint */
+    --black:          #000000;
+    --white:          #FFFFFF;
+
+    /* UI aliases */
+    --bg-page:        var(--sky-20);
+    --bg-card:        var(--white);
+    --bg-header:      var(--navy);
+    --text-primary:   var(--navy);
+    --text-muted:     #5A7A95;
+    --border:         var(--sky-blue);
+    --border-light:   var(--sky-40);
+    --accent:         var(--clayton-blue);
+    --accent-hover:   #0060AD;
+    --success:        var(--clayton-green);
+    --success-dk:     #7CA83A;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    background: var(--bg-page);
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* ══ HEADER ══ */
+  header {
+    background: var(--navy);
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(2,45,77,.2);
+  }
+
+  .logo-lockup {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  /* Clayton logo mark — white on navy, house + wordmark (brand guide p.27) */
+  .logo-svg { height: 36px; width: auto; }
+
+  .logo-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(193,210,229,.35);
+  }
+
+  .app-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--sky-blue);
+    letter-spacing: .3px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-pill {
+    background: rgba(0,113,200,.25);
+    border: 1px solid rgba(0,113,200,.5);
+    color: #7EC8FF;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ══ PIPELINE ══ */
+  .pipeline {
+    background: var(--white);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+  }
+
+  .step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-right: 1px solid var(--border-light);
+    transition: background .15s;
+  }
+  .step:last-child { border-right: none; }
+  .step.active { background: rgba(0,113,200,.05); border-bottom: 3px solid var(--clayton-blue); }
+  .step.done   { background: rgba(153,191,78,.06); }
+
+  .step-num {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px;
+    background: var(--sky-40);
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+  .step.active .step-num { background: var(--clayton-blue); color: var(--white); }
+  .step.done   .step-num { background: var(--clayton-green); color: var(--white); }
+
+  .step-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .3px;
+    color: var(--text-muted);
+    transition: color .15s;
+  }
+  .step.active .step-label { color: var(--clayton-blue); }
+  .step.done   .step-label { color: var(--olive); }
+
+  /* ══ LAYOUT ══ */
+  .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 64px; }
+  .panel { display: none; }
+  .panel.visible { display: block; }
+
+  /* ══ CARDS ══ */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 4px rgba(2,45,77,.05);
+  }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--clayton-blue);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  /* ══ UPLOAD ══ */
+  .upload-zone {
+    border: 2px dashed var(--sky-blue);
+    border-radius: 8px;
+    padding: 52px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .18s;
+    background: var(--sky-20);
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--clayton-blue);
+    background: rgba(0,113,200,.04);
+  }
+  .upload-zone input { display: none; }
+  .upload-zone h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 14px 0 6px;
+  }
+  .upload-zone p { font-size: 14px; color: var(--text-muted); }
+  .upload-hint {
+    display: inline-block;
+    margin-top: 14px;
+    background: rgba(0,113,200,.08);
+    border: 1px solid rgba(0,113,200,.2);
+    color: var(--clayton-blue);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 20px;
+  }
+
+  /* Truck SVG in upload */
+  .upload-truck {
+    width: 56px; height: 56px;
+    margin: 0 auto;
+    color: var(--clayton-blue);
+  }
+
+  /* ══ INFO STRIP ══ */
+  .info-strip {
+    background: var(--warm-white);
+    border: 1px solid #D6CCC0;
+    border-left: 4px solid var(--clayton-green);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    color: var(--olive);
+    line-height: 1.7;
+  }
+
+  /* ══ LEGEND ══ */
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-size: 13px; color: var(--text-muted); align-items: center; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .divider { height: 1px; background: var(--border-light); margin: 18px 0; }
+
+  /* ══ STATS ══ */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 14px; margin-bottom: 22px; }
+  .stat {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-top: 3px solid var(--clayton-blue);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(2,45,77,.04);
+  }
+  .stat-num { font-size: 32px; font-weight: 700; line-height: 1; color: var(--navy); }
+  .stat-lbl { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); margin-top: 5px; }
+
+  /* ══ PARAMS ══ */
+  .params-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 18px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+  }
+  .field input, .field select {
+    width: 100%;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--navy);
+    font-family: inherit;
+    font-size: 15px;
+    padding: 9px 13px;
+    outline: none;
+    transition: border-color .15s;
+    appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--clayton-blue); box-shadow: 0 0 0 3px rgba(0,113,200,.1); }
+  .field .hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; }
+
+  /* ══ TABLE ══ */
+  .table-wrap { overflow-x: auto; border-radius: 6px; border: 1px solid var(--border-light); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--navy);
+    color: var(--sky-blue);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 11px 14px;
+    text-align: left;
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--border-light); transition: background .1s; }
+  tbody tr:hover { background: var(--sky-20); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 10px 14px; color: var(--navy); vertical-align: middle; }
+
+  /* ══ TAGS ══ */
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag-blue   { background: rgba(0,113,200,.1);  color: var(--clayton-blue); }
+  .tag-green  { background: rgba(153,191,78,.15); color: var(--success-dk); }
+  .tag-navy   { background: rgba(2,45,77,.08);   color: var(--navy); }
+  .tag-warn   { background: rgba(212,160,23,.12); color: #9A6F00; }
+
+  /* ══ BUTTONS ══ */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    letter-spacing: .3px; padding: 10px 20px;
+    border-radius: 6px; border: none; cursor: pointer;
+    transition: all .15s; white-space: nowrap;
+  }
+  .btn-primary   { background: var(--clayton-blue); color: var(--white); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-secondary { background: var(--white); color: var(--navy); border: 1.5px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--clayton-blue); color: var(--clayton-blue); }
+  .btn-ghost     { background: transparent; color: var(--clayton-blue); border: 1.5px solid var(--clayton-blue); }
+  .btn-ghost:hover { background: rgba(0,113,200,.06); }
+  .btn-green     { background: var(--clayton-green); color: var(--white); }
+  .btn-green:hover { background: var(--success-dk); }
+  .btn:disabled  { opacity: .4; cursor: not-allowed; }
+
+  /* ══ SECTION HEADER ══ */
+  .section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+  .section-title { font-size: 20px; font-weight: 700; color: var(--navy); }
+
+  /* ══ FILTER BAR ══ */
+  .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+  .filter-bar input, .filter-bar select {
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    color: var(--navy);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .filter-bar input { width: 240px; }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--clayton-blue); }
+
+  /* ══ PAIR CARDS ══ */
+  .pair-card {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-left: 4px solid var(--clayton-blue);
+    border-radius: 8px;
+    padding: 20px 22px;
+    margin-bottom: 12px;
+    transition: box-shadow .15s, border-left-color .15s;
+    box-shadow: 0 1px 4px rgba(2,45,77,.05);
+  }
+  .pair-card:hover { box-shadow: 0 4px 16px rgba(2,45,77,.1); }
+  .pair-card.grade-excellent { border-left-color: var(--clayton-green); }
+  .pair-card.grade-good      { border-left-color: var(--clayton-blue); }
+  .pair-card.grade-fair      { border-left-color: var(--sky-blue); }
+
+  .pair-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .pair-id   { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
+  .pair-ships { font-size: 14px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+
+  .score-wrap { display: flex; align-items: center; gap: 10px; }
+  .score-track { width: 100px; height: 6px; background: var(--sky-40); border-radius: 3px; overflow: hidden; }
+  .score-fill  { height: 100%; border-radius: 3px; transition: width .4s; }
+  .score-num   { font-size: 22px; font-weight: 700; }
+  .score-label { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; text-align: right; margin-top: 2px; }
+
+  .pair-lanes { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .lane-box {
+    background: var(--sky-20);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 12px 16px;
+    flex: 1;
+    min-width: 200px;
+  }
+  .lane-box.backhaul {
+    background: rgba(153,191,78,.07);
+    border-color: rgba(153,191,78,.35);
+  }
+  .lane-type  { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 5px; }
+  .lane-route { font-size: 16px; font-weight: 700; color: var(--navy); line-height: 1.3; margin-bottom: 4px; }
+  .lane-meta  { font-size: 11px; color: var(--text-muted); }
+
+  .dh-bridge {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; padding: 6px 4px; flex-shrink: 0;
+  }
+  .dh-line  { width: 2px; height: 16px; background: var(--border); }
+  .dh-miles { font-size: 11px; font-weight: 700; color: var(--clayton-blue); white-space: nowrap; }
+  .dh-label { font-size: 9px; color: var(--text-muted); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+
+  .pair-meta { display: flex; gap: 20px; flex-wrap: wrap; }
+  .meta-chip { font-size: 12px; color: var(--text-muted); }
+  .meta-chip strong { color: var(--navy); margin-left: 3px; }
+
+  /* ══ WEIGHT INDICATOR ══ */
+  .weight-total {
+    font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: 6px;
+    display: inline-block; margin-top: 10px;
+  }
+  .weight-ok  { background: rgba(153,191,78,.12); color: var(--success-dk); border: 1px solid rgba(153,191,78,.3); }
+  .weight-bad { background: rgba(200,80,60,.08);  color: #C0392B; border: 1px solid rgba(200,80,60,.2); }
+
+  /* ══ EMPTY STATE ══ */
+  .empty { text-align: center; padding: 52px 24px; color: var(--text-muted); background: var(--white); border-radius: 8px; border: 1px solid var(--border-light); }
+  .empty .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty h3 { font-size: 16px; font-weight: 600; color: var(--navy); margin-bottom: 6px; }
+
+  /* ══ TOAST ══ */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--navy);
+    border-left: 4px solid var(--clayton-blue);
+    color: var(--white);
+    padding: 12px 20px; border-radius: 8px; font-size: 13px;
+    display: none; z-index: 999; max-width: 340px;
+    box-shadow: 0 8px 24px rgba(2,45,77,.25);
+    animation: toastIn .2s ease;
+  }
+  @keyframes toastIn { from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1} }
+
+  /* ══ PAGE ACCENT BAR (Clayton chevron motif) ══ */
+  .page-accent {
+    height: 3px;
+    background: linear-gradient(90deg, var(--clayton-blue) 0%, var(--clayton-green) 100%);
+    margin-bottom: 26px;
+    border-radius: 2px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo-lockup">
+    <!-- Clayton logo — white on navy (approved colorway, brand guide p.27)
+         Single-color mark: house silhouette (wide shallow peaked roof +
+         rectangular body) beside bold rounded "Clayton" wordmark with ®      -->
+    <svg class="logo-svg" viewBox="0 0 148 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- ── HOUSE MARK ──────────────────────────────────────────────────── -->
+      <!-- Roof: wide shallow peak — 160° angle per brand guide p.42
+           Points: left-eave (2,19), peak-center (22,5), right-eave (42,19) -->
+      <path d="M2 19 L22 5 L42 19 Z" fill="#FFFFFF"/>
+      <!-- Body: rectangle beneath roof, slightly inset from eaves -->
+      <rect x="6" y="19" width="32" height="16" rx="1.5" fill="#FFFFFF"/>
+      <!-- ── WORDMARK ────────────────────────────────────────────────────── -->
+      <text x="50" y="30"
+        font-family="DM Sans, Arial Rounded MT Bold, Arial Black, Arial, sans-serif"
+        font-weight="800"
+        font-size="24"
+        fill="#FFFFFF"
+        letter-spacing="-0.3">Clayton</text>
+      <!-- ® superscript -->
+      <text x="139" y="14"
+        font-family="DM Sans, Arial, sans-serif"
+        font-weight="400"
+        font-size="9"
+        fill="#FFFFFF">®</text>
+    </svg>
+    <div class="logo-divider"></div>
+    <span class="app-title">Backhaul Matcher</span>
+  </div>
+  <div class="header-right">
+    <span class="header-pill">Freight Intelligence</span>
+  </div>
+</header>
+
+<!-- ══ PIPELINE ══ -->
+<div class="pipeline">
+  <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Upload File</div></div>
+  <div class="step"        id="step2"><div class="step-num">2</div><div class="step-label">Review Data</div></div>
+  <div class="step"        id="step3"><div class="step-num">3</div><div class="step-label">Set Parameters</div></div>
+  <div class="step"        id="step4"><div class="step-num">4</div><div class="step-label">View Matches</div></div>
+</div>
+
+<div class="page">
+<div class="page-accent"></div>
+
+<!-- ══ PANEL 1: UPLOAD ══ -->
+<div class="panel visible" id="panel1">
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload Shipment File
+    </div>
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+      <svg class="upload-truck" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="14" width="34" height="24" rx="4" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M36 22 H48 L54 32 V38 H36 V22Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="12" cy="42" r="5" stroke="currentColor" stroke-width="2.5"/>
+        <circle cx="42" cy="42" r="5" stroke="currentColor" stroke-width="2.5"/>
+        <path d="M17 42 H37" stroke="currentColor" stroke-width="2.5"/>
+      </svg>
+      <h3>Drop your shipment file here</h3>
+      <p>Drag &amp; drop or click to browse · .xlsx, .xls, .csv supported</p>
+      <span class="upload-hint">Use the Clayton Connect Backhaul Template for best results</span>
+    </div>
+  </div>
+
+  <div class="info-strip">
+    Upload your outbound shipments and the Backhaul Matcher finds return loads that reduce empty miles.
+    <a href="Backhaul_Template.xlsx" download
+       style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+              background:var(--navy);color:white;border-radius:6px;
+              padding:7px 14px;font-size:12px;font-weight:600;text-decoration:none;
+              border:none;cursor:pointer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      Download Template
+    </a>
+    The engine scores every candidate pair on deadhead distance, return proximity to origin, and date windows —
+    then ranks results so your team can act fast. Set your tolerances, run the analysis, and export to CSV.
+  </div>
+
+  <div class="card">
+    <div class="card-title">Match quality key</div>
+    <div class="legend">
+      <div style="display:flex;align-items:center;gap:7px"><div class="legend-dot" style="background:var(--clayton-green)"></div><span>Excellent match (score ≥ 80)</span></div>
+      <div style="display:flex;align-items:center;gap:7px"><div class="legend-dot" style="background:var(--clayton-blue)"></div><span>Good match (55–79)</span></div>
+      <div style="display:flex;align-items:center;gap:7px"><div class="legend-dot" style="background:var(--sky-blue)"></div><span>Fair match (&lt; 55)</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL 2: REVIEW ══ -->
+<div class="panel" id="panel2">
+  <div class="section-header">
+    <div class="section-title">Review Shipment Data</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" onclick="reset()">← Re-upload</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Set Parameters →</button>
+    </div>
+  </div>
+  <div class="stats" id="reviewStats"></div>
+  <div class="card">
+    <div class="filter-bar">
+      <input type="text" id="tableSearch" placeholder="Filter by city, state, or shipment #…" oninput="filterTable()"/>
+      <span style="font-size:12px;color:var(--text-muted)" id="rowCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PANEL 3: PARAMETERS ══ -->
+<div class="panel" id="panel3">
+  <div class="section-header">
+    <div class="section-title">Match Parameters</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-primary" id="runBtn" onclick="runMatching()">Find Backhauls →</button>
+    </div>
+  </div>
+
+  <!-- Matching Mode Selector -->
+  <div class="card" style="background:var(--sky-20);border-color:var(--sky-blue)">
+    <div class="card-title">Matching Mode</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <label id="modeAssignLabel" style="cursor:pointer;border:2px solid var(--clayton-blue);border-radius:8px;padding:14px 16px;background:white;display:block" onclick="setMode('assign')">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <input type="radio" name="matchMode" id="modeAssign" value="assign" checked style="accent-color:var(--clayton-blue)"/>
+          <strong style="font-size:13px;color:var(--navy)">Best Assignment</strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;padding-left:22px">
+          Each shipment appears in at most one pair. Optimised for scheduling — finds the best overall set of pairings. Best when you need to book specific trucks.
+        </div>
+      </label>
+      <label id="modeAllLabel" style="cursor:pointer;border:2px solid var(--border-light);border-radius:8px;padding:14px 16px;background:white;display:block" onclick="setMode('all')">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <input type="radio" name="matchMode" id="modeAll" value="all" style="accent-color:var(--clayton-blue)"/>
+          <strong style="font-size:13px;color:var(--navy)">All Valid Pairs</strong>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);line-height:1.5;padding-left:22px">
+          Every shipment pair that meets your parameters is shown. A shipment can appear in multiple pairs. Best for opportunity discovery — let dispatchers choose.
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Yard Hold &amp; Production Window
+    </div>
+    <div style="background:rgba(153,191,78,.08);border:1px solid rgba(153,191,78,.3);border-radius:6px;padding:14px 16px;margin-bottom:18px;font-size:13px;color:var(--olive);line-height:1.7">
+      <strong style="color:var(--success-dk)">How this works:</strong> The matcher uses each shipment's
+      <strong>Production Date + yard hold window</strong> as the earliest available ship date.
+      A load produced on Apr 14 with a 2-day hold can't ship before Apr 16.
+      The <strong>Missed Opportunities</strong> tab shows what additional pairs would become possible
+      if your customers extended their hold window.
+    </div>
+    <div class="params-grid">
+      <div class="field">
+        <label>Current Yard Hold Window (days)</label>
+        <input type="number" id="yardHold" value="2" min="0" max="30"/>
+        <div class="hint">Current max days a home can sit on the yard before shipping. Earliest ship date = Production Date + this value.</div>
+      </div>
+      <div class="field">
+        <label>Max Deadhead Miles (Pickup)</label>
+        <input type="number" id="maxDeadhead" value="150" min="0" max="999"/>
+        <div class="hint">Maximum empty miles from delivery point to next pickup</div>
+      </div>
+      <div class="field">
+        <label>Return-to-Origin Radius (miles)</label>
+        <input type="number" id="returnRadius" value="250" min="0" max="2000"/>
+        <div class="hint">How close the backhaul destination must get to the truck's home origin</div>
+      </div>
+      <div class="field">
+        <label>Max Days Between Loads</label>
+        <input type="number" id="maxDays" value="5" min="0" max="30"/>
+        <div class="hint">Maximum calendar days between outbound delivery and backhaul ship date</div>
+      </div>
+      <div class="field">
+        <label>Equipment Matching</label>
+        <select id="equipMatch">
+          <option value="any">Any — Ignore Equipment Type</option>
+          <option value="strict">Strict — Must Match Exactly</option>
+        </select>
+        <div class="hint">Whether equipment types must match between outbound and backhaul</div>
+      </div>
+      <div class="field">
+        <label>Min Backhaul Length (miles)</label>
+        <input type="number" id="minBackhaul" value="0" min="0" max="9999"/>
+        <div class="hint">Exclude backhaul legs shorter than this — filters out short regional or same-city hops</div>
+      </div>
+      <div class="field">
+        <label>Max Backhaul Length (miles)</label>
+        <input type="number" id="maxBackhaul" value="9999" min="0" max="9999"/>
+        <div class="hint">Exclude backhaul legs longer than this — focus on a specific haul length range</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="border-left:3px solid #C0392B">
+    <div class="card-title" style="color:#C0392B">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Backhaul Guardrails
+    </div>
+    <div style="background:rgba(192,57,43,.05);border-radius:6px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#7B241C;line-height:1.7">
+      A true backhaul must (1) pick up near the prior delivery, not near the origin plant, and (2) bring the truck measurably closer to where it started. These guardrails enforce that definition and prevent the tool from surfacing same-plant round trips as backhauls.
+    </div>
+    <div class="params-grid">
+      <div class="field">
+        <label>Min Origin Separation (miles)</label>
+        <input type="number" id="minOriginSep" value="50" min="0" max="500"/>
+        <div class="hint">Backhaul pickup must be at least this far from the outbound origin plant. Prevents same-plant loads from appearing as backhauls.</div>
+      </div>
+      <div class="field">
+        <label>Net Displacement — Require Homeward Progress</label>
+        <select id="requireDisplacement">
+          <option value="yes">Yes — Backhaul must bring truck closer to origin</option>
+          <option value="no">No — Show all pairs regardless of direction</option>
+        </select>
+        <div class="hint">When enabled, B's destination must be closer to the outbound origin than A's destination. Ensures backhauls move the truck toward home, not further away.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Scoring Weights</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Adjust how the algorithm prioritizes each factor. Weights must total exactly 100.</p>
+    <div class="params-grid">
+      <div class="field">
+        <label>Deadhead Distance — <span id="w1v" style="color:var(--clayton-blue)">40%</span></label>
+        <input type="range" id="w1" min="0" max="100" value="40" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
+        <div class="hint">Prioritize shorter empty miles from drop to next pickup</div>
+      </div>
+      <div class="field">
+        <label>Return to Origin — <span id="w2v" style="color:var(--clayton-blue)">35%</span></label>
+        <input type="range" id="w2" min="0" max="100" value="35" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
+        <div class="hint">Prioritize backhauls that drop closer to the home origin</div>
+      </div>
+      <div class="field">
+        <label>Date Proximity — <span id="w3v" style="color:var(--clayton-blue)">25%</span></label>
+        <input type="range" id="w3" min="0" max="100" value="25" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
+        <div class="hint">Prioritize backhauls that ship sooner after the outbound delivery</div>
+      </div>
+    </div>
+    <div id="weightTotal" class="weight-total weight-ok">✓ Weights total 100%</div>
+  </div>
+</div>
+
+<!-- ══ PANEL 4: RESULTS ══ -->
+<div class="panel" id="panel4">
+  <div class="section-header">
+    <div class="section-title">Results <span id="resultModeTag" style="font-size:11px;font-weight:500;background:var(--sky-blue);color:var(--navy);padding:2px 10px;border-radius:10px;margin-left:10px;vertical-align:middle"></span></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="goTo(3)">← Adjust Parameters</button>
+      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-primary" onclick="reset()">New Upload</button>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border-light);margin-bottom:22px">
+    <button class="result-tab active" id="tab-matches" onclick="switchTab('matches')"
+      style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--clayton-blue);border-bottom:3px solid var(--clayton-blue);margin-bottom:-2px">
+      Backhaul Matches
+    </button>
+    <button class="result-tab" id="tab-analytics" onclick="switchTab('analytics')"
+      style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px">
+      Missed Opportunities
+    </button>
+    <button class="result-tab" id="tab-unresolved" onclick="switchTab('unresolved')"
+      style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px">
+      Unresolved Cities
+    </button>
+  </div>
+
+  <!-- MATCHES TAB -->
+  <div id="tabpanel-matches">
+    <div class="stats" id="resultStats"></div>
+    <div class="filter-bar">
+      <input type="text" id="pairSearch" placeholder="Filter by city or shipment #…" oninput="filterPairs()"/>
+      <select id="scoreFilter" onchange="filterPairs()">
+        <option value="0">All Scores</option>
+        <option value="80">Excellent (≥ 80)</option>
+        <option value="55">Good (≥ 55)</option>
+      </select>
+    </div>
+    <div id="pairList"></div>
+    <div id="unmatchedSection" style="display:none">
+      <div class="divider"></div>
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#C0392B;margin-bottom:6px">⬡ Traditional Moves</div><div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Deliver and deadhead home — no pairing found within current parameters</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Shipment #</th><th>Production Date</th><th>Ship Date</th><th>Origin</th><th>Destination</th><th>Equipment</th><th>Reason</th></tr></thead>
+          <tbody id="unmatchedBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- UNRESOLVED CITIES TAB -->
+  <div id="tabpanel-unresolved" style="display:none">
+    <div style="background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.2);border-radius:8px;padding:16px 20px;margin-bottom:22px;font-size:13px;color:var(--navy);line-height:1.7">
+      Cities listed here could not be geocoded — they are <strong>excluded from matching</strong>.
+      Export this list and send it to your development team to add coordinates to the database.
+      If your browser allows network access, the app attempts to look these up via
+      <strong>OpenStreetMap/Nominatim</strong> automatically on upload.
+    </div>
+    <div id="unresolvedContent">
+      <div class="empty"><div class="icon">✅</div><h3>All cities resolved</h3><p>Every city in your dataset has coordinates.</p></div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn btn-secondary" onclick="exportUnresolvedCSV()">⬇ Export Unresolved Cities CSV</button>
+    </div>
+  </div>
+
+  <!-- MISSED OPPORTUNITIES TAB -->
+  <div id="tabpanel-analytics" style="display:none">
+    <div style="background:rgba(0,113,200,.06);border:1px solid rgba(0,113,200,.2);border-radius:8px;padding:16px 20px;margin-bottom:22px;font-size:13px;color:var(--navy);line-height:1.7">
+      This analysis reruns the matching engine with an expanded pairing window for each extended
+      yard hold scenario. Each extra hold day gives the dispatcher one additional day to find a
+      backhaul before the load must ship — so a 2→5 day extension adds 3 days to the search window.
+      Comparing to your current <strong id="analyticHoldLabel">2-day</strong> baseline, this quantifies
+      how many additional backhaul pairs become possible if customers extend their yard hold policy.
+    </div>
+    <div id="analyticsContent"></div>
+    <div style="margin-top:24px">
+      <button class="btn btn-secondary" onclick="exportAnalyticsCSV()">⬇ Export Opportunity Analysis CSV</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let shipments=[], allPairs=[], filteredPairs=[];
+
+// ═══════════════════════════════════════════════════════════════════
+// CITY COORDINATE DB — 500+ US cities (Haversine straight-line miles)
+// ═══════════════════════════════════════════════════════════════════
+const CITY_COORDS={
+  // ── ALABAMA ──
+  "BIRMINGHAM,AL":[33.5186,-86.8104],"HUNTSVILLE,AL":[34.7304,-86.5861],"MOBILE,AL":[30.6954,-88.0399],
+  "MONTGOMERY,AL":[32.3668,-86.3000],"TUSCALOOSA,AL":[33.2098,-87.5692],"DOTHAN,AL":[31.2232,-85.3905],
+  "DECATUR,AL":[34.6059,-86.9833],"AUBURN,AL":[32.6099,-85.4808],"GADSDEN,AL":[34.0143,-86.0066],
+  // ── ALASKA ──
+  "ANCHORAGE,AK":[61.2181,-149.9003],"FAIRBANKS,AK":[64.8378,-147.7164],"JUNEAU,AK":[58.3005,-134.4197],
+  // ── ARIZONA ──
+  "PHOENIX,AZ":[33.4484,-112.0740],"TUCSON,AZ":[32.2226,-110.9747],"MESA,AZ":[33.4152,-111.8315],
+  "CHANDLER,AZ":[33.3062,-111.8413],"SCOTTSDALE,AZ":[33.4942,-111.9261],"GILBERT,AZ":[33.3528,-111.7890],
+  "GLENDALE,AZ":[33.5387,-112.1860],"TEMPE,AZ":[33.4255,-111.9400],"PEORIA,AZ":[33.5806,-112.2374],
+  "SURPRISE,AZ":[33.6292,-112.3679],"YUMA,AZ":[32.6927,-114.6277],"FLAGSTAFF,AZ":[35.1983,-111.6513],
+  "PRESCOTT,AZ":[34.5400,-112.4685],"KINGMAN,AZ":[35.1895,-114.0530],"BULLHEAD CITY,AZ":[35.1478,-114.5680],
+  "LAKE HAVASU CITY,AZ":[34.4839,-114.3224],"SIERRA VISTA,AZ":[31.5455,-110.3032],
+  // ── ARKANSAS ──
+  "LITTLE ROCK,AR":[34.7465,-92.2896],"FORT SMITH,AR":[35.3859,-94.3985],"FAYETTEVILLE,AR":[36.0626,-94.1574],
+  "SPRINGDALE,AR":[36.1867,-94.1288],"JONESBORO,AR":[35.8423,-90.7043],"NORTH LITTLE ROCK,AR":[34.7695,-92.2671],
+  "CONWAY,AR":[35.0887,-92.4421],"ROGERS,AR":[36.3320,-94.1185],"PINE BLUFF,AR":[34.2284,-92.0032],
+  "BENTONVILLE,AR":[36.3728,-94.2088],"HOT SPRINGS,AR":[34.5037,-93.0552],"TEXARKANA,AR":[33.4418,-94.0377],
+  "SHREVEPORT,LA":[32.5252,-93.7502],
+  // ── CALIFORNIA ──
+  "LOS ANGELES,CA":[34.0522,-118.2437],"SAN DIEGO,CA":[32.7157,-117.1611],"SAN JOSE,CA":[37.3382,-121.8863],
+  "SAN FRANCISCO,CA":[37.7749,-122.4194],"FRESNO,CA":[36.7378,-119.7871],"SACRAMENTO,CA":[38.5816,-121.4944],
+  "LONG BEACH,CA":[33.7701,-118.1937],"OAKLAND,CA":[37.8044,-122.2712],"BAKERSFIELD,CA":[35.3733,-119.0187],
+  "ANAHEIM,CA":[33.8353,-117.9145],"RIVERSIDE,CA":[33.9806,-117.3755],"STOCKTON,CA":[37.9577,-121.2908],
+  "IRVINE,CA":[33.6846,-117.8265],"SANTA ANA,CA":[33.7455,-117.8677],"CHULA VISTA,CA":[32.6401,-117.0842],
+  "FREMONT,CA":[37.5485,-121.9886],"SAN BERNARDINO,CA":[34.1083,-117.2898],"MODESTO,CA":[37.6391,-120.9969],
+  "FONTANA,CA":[34.0922,-117.4350],"MORENO VALLEY,CA":[33.9425,-117.2297],"GLENDALE,CA":[34.1425,-118.2551],
+  "HUNTINGTON BEACH,CA":[33.6595,-117.9988],"SANTA CLARITA,CA":[34.3917,-118.5426],
+  "GARDEN GROVE,CA":[33.7743,-117.9378],"OCEANSIDE,CA":[33.1959,-117.3795],"ONTARIO,CA":[34.0633,-117.6509],
+  "RANCHO CUCAMONGA,CA":[34.1064,-117.5931],"SANTA ROSA,CA":[38.4404,-122.7141],
+  "CORONA,CA":[33.8753,-117.5664],"ELK GROVE,CA":[38.4088,-121.3716],"TORRANCE,CA":[33.8358,-118.3406],
+  "ESCONDIDO,CA":[33.1192,-117.0864],"PASADENA,CA":[34.1478,-118.1445],"POMONA,CA":[34.0551,-117.7500],
+  "HAYWARD,CA":[37.6688,-122.0808],"SUNNYVALE,CA":[37.3688,-122.0363],"SALINAS,CA":[36.6777,-121.6555],
+  "CONCORD,CA":[37.9779,-122.0311],"VISALIA,CA":[36.3302,-119.2921],"OXNARD,CA":[34.1975,-119.1771],
+  "VALLEJO,CA":[38.1041,-122.2566],"PALMDALE,CA":[34.5794,-118.1165],"LANCASTER,CA":[34.6868,-118.1542],
+  "BERKELEY,CA":[37.8716,-122.2727],"EL MONTE,CA":[34.0686,-118.0276],"VICTORVILLE,CA":[34.5362,-117.2928],
+  "SANTA BARBARA,CA":[34.4208,-119.6982],"RIALTO,CA":[34.1064,-117.3703],"SANTA CLARA,CA":[37.3541,-121.9552],
+  "SANTA CRUZ,CA":[36.9741,-122.0308],"INGLEWOOD,CA":[33.9617,-118.3531],"VENTURA,CA":[34.2805,-119.2945],
+  "REDDING,CA":[40.5865,-122.3917],"SAN BUENAVENTURA,CA":[34.2805,-119.2945],"CHICO,CA":[39.7285,-121.8375],
+  "THOUSAND OAKS,CA":[34.1706,-118.8376],"FAIRFIELD,CA":[38.2494,-122.0400],"CLOVIS,CA":[36.8252,-119.7029],
+  "MURRIETA,CA":[33.5539,-117.2139],"TEMECULA,CA":[33.4936,-117.1484],"ANTIOCH,CA":[37.9963,-121.8058],
+  "RICHMOND,CA":[37.9358,-122.3477],"SAN MATEO,CA":[37.5630,-122.3255],"WEST COVINA,CA":[34.0686,-117.9390],
+  "NORWALK,CA":[33.9022,-118.0817],"DALY CITY,CA":[37.6879,-122.4702],"BURBANK,CA":[34.1808,-118.3090],
+  "ROSEVILLE,CA":[38.7521,-121.2880],"DOWNEY,CA":[33.9401,-118.1332],"COSTA MESA,CA":[33.6411,-117.9187],
+  "LOS ANGELES,CA":[34.0522,-118.2437],"SAN JOSE,CA":[37.3382,-121.8863],
+  // ── COLORADO ──
+  "DENVER,CO":[39.7392,-104.9903],"COLORADO SPRINGS,CO":[38.8339,-104.8214],"AURORA,CO":[39.7294,-104.8319],
+  "FORT COLLINS,CO":[40.5853,-105.0844],"LAKEWOOD,CO":[39.7047,-105.0814],"THORNTON,CO":[39.8680,-104.9719],
+  "ARVADA,CO":[39.8028,-105.0875],"WESTMINSTER,CO":[39.8367,-105.0372],"PUEBLO,CO":[38.2544,-104.6091],
+  "BOULDER,CO":[40.0150,-105.2705],"GREELEY,CO":[40.4233,-104.7091],"LONGMONT,CO":[40.1672,-105.1019],
+  "LOVELAND,CO":[40.3978,-105.0749],"BROOMFIELD,CO":[39.9205,-105.0867],"GRAND JUNCTION,CO":[39.0639,-108.5506],
+  "CASTLE ROCK,CO":[39.3722,-104.8561],"COMMERCE CITY,CO":[39.8081,-104.9339],
+  // ── CONNECTICUT ──
+  "BRIDGEPORT,CT":[41.1865,-73.1952],"NEW HAVEN,CT":[41.3082,-72.9279],"HARTFORD,CT":[41.7658,-72.6851],
+  "STAMFORD,CT":[41.0534,-73.5387],"WATERBURY,CT":[41.5582,-73.0515],"NORWALK,CT":[41.1177,-73.4082],
+  "DANBURY,CT":[41.3948,-73.4540],"NEW BRITAIN,CT":[41.6612,-72.7795],"WEST HARTFORD,CT":[41.7620,-72.7423],
+  "GREENWICH,CT":[41.0262,-73.6282],
+  // ── DELAWARE ──
+  "WILMINGTON,DE":[39.7447,-75.5484],"DOVER,DE":[39.1582,-75.5244],"NEWARK,DE":[39.6837,-75.7497],
+  // ── FLORIDA ──
+  "MIAMI,FL":[25.7617,-80.1918],"TAMPA,FL":[27.9506,-82.4572],"ORLANDO,FL":[28.5383,-81.3792],
+  "JACKSONVILLE,FL":[30.3322,-81.6557],"FORT LAUDERDALE,FL":[26.1224,-80.1373],"TALLAHASSEE,FL":[30.4383,-84.2807],
+  "ST. PETERSBURG,FL":[27.7731,-82.6400],"SAINT PETERSBURG,FL":[27.7731,-82.6400],"HIALEAH,FL":[25.8576,-80.2781],
+  "CAPE CORAL,FL":[26.5629,-81.9495],"PEMBROKE PINES,FL":[26.0076,-86.1413],"HOLLYWOOD,FL":[26.0112,-80.1495],
+  "GAINESVILLE,FL":[29.6516,-82.3248],"MIRAMAR,FL":[25.9871,-80.2322],"CORAL SPRINGS,FL":[26.2712,-80.2707],
+  "PORT ST. LUCIE,FL":[27.2939,-80.3503],"WEST PALM BEACH,FL":[26.7153,-80.0534],"CLEARWATER,FL":[27.9659,-82.8001],
+  "MIAMI GARDENS,FL":[25.9420,-80.2456],"PALM BAY,FL":[28.0345,-80.5887],"POMPANO BEACH,FL":[26.2379,-80.1248],
+  "LAKELAND,FL":[28.0395,-81.9498],"DAYTONA BEACH,FL":[29.2108,-81.0228],"FORT MYERS,FL":[26.6406,-81.8723],
+  "PENSACOLA,FL":[30.4213,-87.2169],"SARASOTA,FL":[27.3364,-82.5307],"GULFPORT,FL":[27.7522,-82.7068],
+  "MIAMI BEACH,FL":[25.7907,-80.1300],"BOCA RATON,FL":[26.3683,-80.1289],"OCALA,FL":[29.1872,-82.1401],
+  "KISSIMMEE,FL":[28.2919,-81.4076],"DELTONA,FL":[28.9005,-81.2637],"MELBOURNE,FL":[28.0836,-80.6081],
+  "GULFPORT,MS":[30.3674,-89.0928],"TALLAHASSEE,FL":[30.4383,-84.2807],
+  // ── GEORGIA ──
+  "ATLANTA,GA":[33.7490,-84.3880],"COLUMBUS,GA":[32.4610,-84.9877],"SAVANNAH,GA":[32.0809,-81.0912],
+  "ATHENS,GA":[33.9519,-83.3576],"SANDY SPRINGS,GA":[33.9240,-84.3716],"MACON,GA":[32.8407,-83.6324],
+  "ROSWELL,GA":[34.0232,-84.3616],"ALBANY,GA":[31.5785,-84.1557],"JOHNS CREEK,GA":[34.0289,-84.1986],
+  "WARNER ROBINS,GA":[32.6130,-83.5996],"ALPHARETTA,GA":[34.0754,-84.2941],"MARIETTA,GA":[33.9526,-84.5499],
+  "VALDOSTA,GA":[30.8327,-83.2785],"SMYRNA,GA":[33.8840,-84.5144],"GAINESVILLE,GA":[34.2979,-83.8241],
+  "PEACHTREE CITY,GA":[33.3968,-84.5960],"AUGUSTA,GA":[33.4735,-82.0105],
+  // ── HAWAII ──
+  "HONOLULU,HI":[21.3069,-157.8583],"HILO,HI":[19.7297,-155.0900],"KAILUA,HI":[21.4022,-157.7394],
+  // ── IDAHO ──
+  "BOISE,ID":[43.6150,-116.2023],"NAMPA,ID":[43.5407,-116.5635],"MERIDIAN,ID":[43.6121,-116.3915],
+  "IDAHO FALLS,ID":[43.4927,-112.0408],"POCATELLO,ID":[42.8713,-112.4455],"CALDWELL,ID":[43.6629,-116.6874],
+  "COEUR D'ALENE,ID":[47.6777,-116.7805],"TWIN FALLS,ID":[42.5629,-114.4609],"LEWISTON,ID":[46.4165,-117.0177],
+  // ── ILLINOIS ──
+  "CHICAGO,IL":[41.8781,-87.6298],"AURORA,IL":[41.7606,-88.3201],"JOLIET,IL":[41.5250,-88.0817],
+  "ROCKFORD,IL":[42.2711,-89.0940],"NAPERVILLE,IL":[41.7508,-88.1535],"SPRINGFIELD,IL":[39.7817,-89.6501],
+  "PEORIA,IL":[40.6936,-89.5890],"ELGIN,IL":[42.0354,-88.2826],"WAUKEGAN,IL":[42.3636,-87.8448],
+  "CHAMPAIGN,IL":[40.1164,-88.2434],"BLOOMINGTON,IL":[40.4842,-88.9937],"DECATUR,IL":[39.8403,-88.9548],
+  "EVANSTON,IL":[42.0451,-87.6877],"EAST ST. LOUIS,IL":[38.6241,-90.1540],"BELVIDERE,IL":[42.2639,-88.8440],
+  "MOLINE,IL":[41.5067,-90.5151],"GALESBURG,IL":[40.9478,-90.3712],"CARBONDALE,IL":[37.7273,-89.2167],
+  "QUINCY,IL":[39.9356,-91.4099],"NORMAL,IL":[40.5142,-88.9906],"KANKAKEE,IL":[41.1200,-87.8612],
+  // ── INDIANA ──
+  "INDIANAPOLIS,IN":[39.7684,-86.1581],"FORT WAYNE,IN":[41.0793,-85.1394],"EVANSVILLE,IN":[37.9716,-87.5711],
+  "SOUTH BEND,IN":[41.6764,-86.2520],"CARMEL,IN":[39.9784,-86.1180],"FISHERS,IN":[39.9567,-85.9680],
+  "HAMMOND,IN":[41.5834,-87.5000],"MUNCIE,IN":[40.1934,-85.3864],"TERRE HAUTE,IN":[39.4667,-87.4139],
+  "ANDERSON,IN":[40.1053,-85.6803],"LAFAYETTE,IN":[40.4167,-86.8753],"BLOOMINGTON,IN":[39.1653,-86.5264],
+  "GARY,IN":[41.5934,-87.3464],"RICHMOND,IN":[39.8289,-84.8902],"KOKOMO,IN":[40.4864,-86.1336],
+  "MISHAWAKA,IN":[41.6620,-86.1586],"NOBLESVILLE,IN":[40.0456,-86.0086],
+  // ── IOWA ──
+  "DES MOINES,IA":[41.5868,-93.6250],"CEDAR RAPIDS,IA":[41.9779,-91.6656],"DAVENPORT,IA":[41.5236,-90.5776],
+  "SIOUX CITY,IA":[42.4999,-96.4003],"IOWA CITY,IA":[41.6611,-91.5302],"WATERLOO,IA":[42.4928,-92.3426],
+  "AMES,IA":[42.0308,-93.6319],"COUNCIL BLUFFS,IA":[41.2619,-95.8608],"WEST DES MOINES,IA":[41.5772,-93.7113],
+  "ANKENY,IA":[41.7321,-93.6058],"DUBUQUE,IA":[42.5006,-90.6648],"CEDAR FALLS,IA":[42.5349,-92.4453],
+  // ── KANSAS ──
+  "WICHITA,KS":[37.6872,-97.3301],"OVERLAND PARK,KS":[38.9822,-94.6708],"KANSAS CITY,KS":[39.1142,-94.6275],
+  "TOPEKA,KS":[39.0558,-95.6890],"OLATHE,KS":[38.8814,-94.8191],"LAWRENCE,KS":[38.9717,-95.2353],
+  "SHAWNEE,KS":[39.0228,-94.7152],"MANHATTAN,KS":[39.1836,-96.5717],"LENEXA,KS":[38.9536,-94.7336],
+  "SALINA,KS":[38.8403,-97.6114],"HUTCHINSON,KS":[38.0608,-97.9298],"DODGE CITY,KS":[37.7528,-100.0171],
+  // ── KENTUCKY ──
+  "LOUISVILLE,KY":[38.2527,-85.7585],"LEXINGTON,KY":[38.0406,-84.5037],"BOWLING GREEN,KY":[36.9685,-86.4808],
+  "OWENSBORO,KY":[37.7743,-87.1130],"COVINGTON,KY":[39.0837,-84.5086],"HOPKINSVILLE,KY":[36.8656,-87.4886],
+  "RICHMOND,KY":[37.7479,-84.2947],"FLORENCE,KY":[38.9987,-84.6266],"ELIZABETHTOWN,KY":[37.6940,-85.8591],
+  "PADUCAH,KY":[37.0834,-88.5998],"FRANKFORT,KY":[38.2009,-84.8733],
+  // ── LOUISIANA ──
+  "NEW ORLEANS,LA":[29.9511,-90.0715],"BATON ROUGE,LA":[30.4515,-91.1871],"SHREVEPORT,LA":[32.5252,-93.7502],
+  "METAIRIE,LA":[29.9941,-90.1625],"LAFAYETTE,LA":[30.2241,-92.0198],"LAKE CHARLES,LA":[30.2266,-93.2174],
+  "BOSSIER CITY,LA":[32.5160,-93.7321],"KENNER,LA":[29.9941,-90.2417],"MONROE,LA":[32.5093,-92.1193],
+  "ALEXANDRIA,LA":[31.3113,-92.4451],"HOUMA,LA":[29.5958,-90.7195],
+  // ── MAINE ──
+  "PORTLAND,ME":[43.6591,-70.2568],"LEWISTON,ME":[44.1004,-70.2148],"BANGOR,ME":[44.8012,-68.7778],
+  "SOUTH PORTLAND,ME":[43.6415,-70.2409],"AUBURN,ME":[44.0978,-70.2312],
+  // ── MARYLAND ──
+  "BALTIMORE,MD":[39.2904,-76.6122],"FREDERICK,MD":[39.4143,-77.4105],"ROCKVILLE,MD":[39.0840,-77.1528],
+  "GAITHERSBURG,MD":[39.1434,-77.2014],"BOWIE,MD":[38.9423,-76.7291],"HAGERSTOWN,MD":[39.6418,-77.7200],
+  "ANNAPOLIS,MD":[38.9784,-76.4922],"COLLEGE PARK,MD":[38.9897,-76.9378],
+  // ── MASSACHUSETTS ──
+  "BOSTON,MA":[42.3601,-71.0589],"WORCESTER,MA":[42.2626,-71.8023],"SPRINGFIELD,MA":[42.1015,-72.5898],
+  "CAMBRIDGE,MA":[42.3736,-71.1097],"LOWELL,MA":[42.6334,-71.3162],"BROCKTON,MA":[42.0834,-71.0184],
+  "NEW BEDFORD,MA":[41.6362,-70.9342],"QUINCY,MA":[42.2529,-71.0023],"LYNN,MA":[42.4668,-70.9495],
+  "FALL RIVER,MA":[41.7015,-71.1550],"NEWTON,MA":[42.3370,-71.2092],"SOMERVILLE,MA":[42.3876,-71.0995],
+  "LAWRENCE,MA":[42.7070,-71.1631],"FRAMINGHAM,MA":[42.2793,-71.4162],"HAVERHILL,MA":[42.7762,-71.0773],
+  // ── MICHIGAN ──
+  "DETROIT,MI":[42.3314,-83.0458],"GRAND RAPIDS,MI":[42.9634,-85.6681],"WARREN,MI":[42.4775,-83.0277],
+  "STERLING HEIGHTS,MI":[42.5803,-83.0302],"LANSING,MI":[42.7325,-84.5555],"ANN ARBOR,MI":[42.2808,-83.7430],
+  "FLINT,MI":[43.0125,-83.6875],"DEARBORN,MI":[42.3223,-83.1763],"LIVONIA,MI":[42.3684,-83.3527],
+  "WESTLAND,MI":[42.3242,-83.4002],"TROY,MI":[42.6064,-83.1498],"FARMINGTON HILLS,MI":[42.4989,-83.3677],
+  "KALAMAZOO,MI":[42.2917,-85.5872],"SOUTHFIELD,MI":[42.4734,-83.2219],"PONTIAC,MI":[42.6389,-83.2910],
+  "SAGINAW,MI":[43.4195,-83.9508],"MUSKEGON,MI":[43.2342,-86.2484],"BATTLE CREEK,MI":[42.3212,-85.1797],
+  "BAY CITY,MI":[43.5945,-83.8888],"KENTWOOD,MI":[42.8681,-85.6444],"EAST LANSING,MI":[42.7368,-84.4839],
+  "WYOMING,MI":[42.9134,-85.7053],"ROCHESTER HILLS,MI":[42.6581,-83.1499],"MIDLAND,MI":[43.6156,-84.2472],
+  "TRAVERSE CITY,MI":[44.7631,-85.6206],"MARQUETTE,MI":[46.5436,-87.3954],
+  // ── MINNESOTA ──
+  "MINNEAPOLIS,MN":[44.9778,-93.2650],"ST. PAUL,MN":[44.9537,-93.0900],"SAINT PAUL,MN":[44.9537,-93.0900],
+  "ROCHESTER,MN":[44.0121,-92.4802],"DULUTH,MN":[46.7867,-92.1005],"BLOOMINGTON,MN":[44.8408,-93.3477],
+  "BROOKLYN PARK,MN":[45.0941,-93.3752],"PLYMOUTH,MN":[45.0105,-93.4555],"MAPLE GROVE,MN":[45.0724,-93.4557],
+  "WOODBURY,MN":[44.9239,-92.9594],"EDEN PRAIRIE,MN":[44.8547,-93.4708],"COON RAPIDS,MN":[45.1197,-93.3080],
+  "BURNSVILLE,MN":[44.7677,-93.2777],"EAGAN,MN":[44.8041,-93.1669],"BLAINE,MN":[45.1608,-93.2350],
+  "LAKEVILLE,MN":[44.6497,-93.2428],"MANKATO,MN":[44.1636,-94.0007],"ST. CLOUD,MN":[45.5579,-94.1632],
+  // ── MISSISSIPPI ──
+  "JACKSON,MS":[32.2988,-90.1848],"GULFPORT,MS":[30.3674,-89.0928],"SOUTHAVEN,MS":[34.9889,-89.9934],
+  "HATTIESBURG,MS":[31.3271,-89.2903],"BILOXI,MS":[30.3960,-88.8853],"MERIDIAN,MS":[32.3643,-88.7037],
+  "OLIVE BRANCH,MS":[34.9618,-89.8298],"TUPELO,MS":[34.2576,-88.7034],"GREENVILLE,MS":[33.4101,-91.0629],
+  "HORN LAKE,MS":[34.9554,-90.0343],"CLINTON,MS":[32.3415,-90.3218],
+  // ── MISSOURI ──
+  "KANSAS CITY,MO":[39.0997,-94.5786],"ST. LOUIS,MO":[38.6270,-90.1994],"SAINT LOUIS,MO":[38.6270,-90.1994],
+  "SPRINGFIELD,MO":[37.2090,-93.2923],"COLUMBIA,MO":[38.9517,-92.3341],"INDEPENDENCE,MO":[39.0911,-94.4155],
+  "LEE'S SUMMIT,MO":[38.9108,-94.3822],"LEES SUMMIT,MO":[38.9108,-94.3822],"O'FALLON,MO":[38.8106,-90.6998],
+  "OFALLON,MO":[38.8106,-90.6998],"ST. JOSEPH,MO":[39.7675,-94.8467],"SAINT JOSEPH,MO":[39.7675,-94.8467],
+  "ST. CHARLES,MO":[38.7881,-90.4974],"SAINT CHARLES,MO":[38.7881,-90.4974],"BLUE SPRINGS,MO":[39.0170,-94.2816],
+  "JOPLIN,MO":[37.0842,-94.5133],"CHESTERFIELD,MO":[38.6631,-90.5771],"JEFFERSON CITY,MO":[38.5767,-92.1735],
+  "CAPE GIRARDEAU,MO":[37.3059,-89.5181],"FLORISSANT,MO":[38.7895,-90.3224],
+  // ── MONTANA ──
+  "BILLINGS,MT":[45.7833,-108.5007],"MISSOULA,MT":[46.8787,-114.0168],"GREAT FALLS,MT":[47.5002,-111.3008],
+  "BOZEMAN,MT":[45.6770,-111.0429],"BUTTE,MT":[46.0038,-112.5348],"HELENA,MT":[46.5958,-112.0270],
+  // ── NEBRASKA ──
+  "OMAHA,NE":[41.2565,-95.9345],"LINCOLN,NE":[40.8136,-96.7026],"BELLEVUE,NE":[41.1370,-95.8945],
+  "GRAND ISLAND,NE":[40.9250,-98.3420],"KEARNEY,NE":[40.6993,-99.0817],"FREMONT,NE":[41.4333,-96.4981],
+  "HASTINGS,NE":[40.5861,-98.3873],"NORFOLK,NE":[42.0281,-97.4170],"NORTH PLATTE,NE":[41.1239,-100.7654],
+  // ── NEVADA ──
+  "LAS VEGAS,NV":[36.1699,-115.1398],"HENDERSON,NV":[36.0397,-114.9817],"RENO,NV":[39.5296,-119.8138],
+  "NORTH LAS VEGAS,NV":[36.1989,-115.1175],"SPARKS,NV":[39.5349,-119.7527],"CARSON CITY,NV":[39.1638,-119.7674],
+  "PARADISE,NV":[36.0900,-115.1440],"ENTERPRISE,NV":[36.0250,-115.2158],
+  // ── NEW HAMPSHIRE ──
+  "MANCHESTER,NH":[42.9956,-71.4548],"NASHUA,NH":[42.7654,-71.4676],"CONCORD,NH":[43.2081,-71.5376],
+  "DERRY,NH":[42.8812,-71.3270],"ROCHESTER,NH":[43.3048,-70.9745],"DOVER,NH":[43.1979,-70.8737],
+  // ── NEW JERSEY ──
+  "NEWARK,NJ":[40.7357,-74.1724],"JERSEY CITY,NJ":[40.7178,-74.0431],"PATERSON,NJ":[40.9168,-74.1718],
+  "ELIZABETH,NJ":[40.6640,-74.2107],"EDISON,NJ":[40.5187,-74.4121],"WOODBRIDGE,NJ":[40.5576,-74.2843],
+  "LAKEWOOD,NJ":[40.0951,-74.2179],"TOMS RIVER,NJ":[39.9537,-74.1979],"HAMILTON,NJ":[40.2037,-74.7027],
+  "TRENTON,NJ":[40.2171,-74.7429],"CAMDEN,NJ":[39.9259,-75.1196],"CLIFTON,NJ":[40.8584,-74.1638],
+  "PASSAIC,NJ":[40.8568,-74.1282],"UNION CITY,NJ":[40.7676,-74.0323],"EAST ORANGE,NJ":[40.7673,-74.2049],
+  // ── NEW MEXICO ──
+  "ALBUQUERQUE,NM":[35.0844,-106.6504],"LAS CRUCES,NM":[32.3199,-106.7637],"RIO RANCHO,NM":[35.2328,-106.6630],
+  "SANTA FE,NM":[35.6870,-105.9378],"ROSWELL,NM":[33.3943,-104.5230],"FARMINGTON,NM":[36.7281,-108.2087],
+  "CLOVIS,NM":[34.4048,-103.2052],"HOBBS,NM":[32.7026,-103.1360],"CARLSBAD,NM":[32.4207,-104.2288],
+  "ALAMOGORDO,NM":[32.8995,-105.9603],
+  // ── NEW YORK ──
+  "NEW YORK,NY":[40.7128,-74.0060],"BUFFALO,NY":[42.8864,-78.8784],"ROCHESTER,NY":[43.1566,-77.6088],
+  "YONKERS,NY":[40.9312,-73.8988],"SYRACUSE,NY":[43.0481,-76.1474],"ALBANY,NY":[42.6526,-73.7562],
+  "NEW ROCHELLE,NY":[40.9115,-73.7826],"MOUNT VERNON,NY":[40.9126,-73.8370],"SCHENECTADY,NY":[42.8142,-73.9396],
+  "UTICA,NY":[43.1009,-75.2327],"WHITE PLAINS,NY":[41.0340,-73.7629],"HEMPSTEAD,NY":[40.7062,-73.6187],
+  "TROY,NY":[42.7284,-73.6918],"NIAGARA FALLS,NY":[43.0962,-79.0377],"BINGHAMTON,NY":[42.0987,-75.9180],
+  "FREEPORT,NY":[40.6576,-73.5832],"VALLEY STREAM,NY":[40.6643,-73.7085],"LONG ISLAND CITY,NY":[40.7447,-73.9485],
+  "POUGHKEEPSIE,NY":[41.7004,-73.9210],"ROME,NY":[43.2128,-75.4557],"ITHACA,NY":[42.4440,-76.5021],
+  "ELMIRA,NY":[42.0898,-76.8077],"BROOKHAVEN,NY":[40.7776,-72.9154],"ISLIP,NY":[40.7287,-73.2107],
+  // ── NORTH CAROLINA ──
+  "CHARLOTTE,NC":[35.2271,-80.8431],"RALEIGH,NC":[35.7796,-78.6382],"GREENSBORO,NC":[36.0726,-79.7920],
+  "DURHAM,NC":[35.9940,-78.8986],"WINSTON-SALEM,NC":[36.0999,-80.2442],"WINSTON SALEM,NC":[36.0999,-80.2442],
+  "FAYETTEVILLE,NC":[35.0527,-78.8784],"CARY,NC":[35.7915,-78.7811],"WILMINGTON,NC":[34.2257,-77.9447],
+  "HIGH POINT,NC":[35.9557,-80.0053],"CONCORD,NC":[35.4088,-80.5795],"GASTONIA,NC":[35.2621,-81.1873],
+  "JACKSONVILLE,NC":[34.7540,-77.4302],"CHAPEL HILL,NC":[35.9132,-79.0558],"HUNTERSVILLE,NC":[35.4107,-80.8428],
+  "APEX,NC":[35.7326,-78.8503],"BURLINGTON,NC":[36.0957,-79.4378],"ASHEVILLE,NC":[35.5951,-82.5515],
+  "GREENVILLE,NC":[35.6127,-77.3664],"ROCKY MOUNT,NC":[35.9382,-77.7905],
+  // ── NORTH DAKOTA ──
+  "FARGO,ND":[46.8772,-96.7898],"BISMARCK,ND":[46.8083,-100.7837],"GRAND FORKS,ND":[47.9253,-97.0329],
+  "MINOT,ND":[48.2325,-101.2963],"WEST FARGO,ND":[46.8747,-96.9003],
+  // ── OHIO ──
+  "COLUMBUS,OH":[39.9612,-82.9988],"CLEVELAND,OH":[41.4993,-81.6944],"CINCINNATI,OH":[39.1031,-84.5120],
+  "TOLEDO,OH":[41.6639,-83.5552],"AKRON,OH":[41.0814,-81.5190],"DAYTON,OH":[39.7589,-84.1916],
+  "PARMA,OH":[41.3845,-81.7229],"CANTON,OH":[40.7989,-81.3784],"YOUNGSTOWN,OH":[41.0998,-80.6495],
+  "LORAIN,OH":[41.4523,-82.1824],"HAMILTON,OH":[39.3995,-84.5613],"SPRINGFIELD,OH":[39.9242,-83.8088],
+  "KETTERING,OH":[39.6887,-84.1688],"ELYRIA,OH":[41.3681,-82.1077],"LAKEWOOD,OH":[41.4820,-81.7982],
+  "NEWARK,OH":[40.0581,-82.4013],"MIDDLETOWN,OH":[39.5151,-84.3983],"CUYAHOGA FALLS,OH":[41.1334,-81.4846],
+  "EUCLID,OH":[41.5931,-81.5268],"MANSFIELD,OH":[40.7584,-82.5154],"MENTOR,OH":[41.6661,-81.3396],
+  "LIMA,OH":[40.7423,-84.1052],"FINDLAY,OH":[41.0442,-83.6499],"ZANESVILLE,OH":[39.9403,-82.0132],
+  // ── OKLAHOMA ──
+  "OKLAHOMA CITY,OK":[35.4676,-97.5164],"TULSA,OK":[36.1540,-95.9928],"NORMAN,OK":[35.2226,-97.4395],
+  "BROKEN ARROW,OK":[36.0526,-95.7908],"EDMOND,OK":[35.6528,-97.4781],"LAWTON,OK":[34.6086,-98.3959],
+  "MOORE,OK":[35.3395,-97.4867],"MIDWEST CITY,OK":[35.4495,-97.3967],"ENID,OK":[36.3956,-97.8784],
+  "STILLWATER,OK":[36.1156,-97.0584],"MUSKOGEE,OK":[35.7479,-95.3697],"BARTLESVILLE,OK":[36.7473,-95.9808],
+  // ── OREGON ──
+  "PORTLAND,OR":[45.5051,-122.6750],"SALEM,OR":[44.9429,-123.0351],"EUGENE,OR":[44.0521,-123.0868],
+  "GRESHAM,OR":[45.4996,-122.4302],"HILLSBORO,OR":[45.5229,-122.9898],"BEAVERTON,OR":[45.4871,-122.8037],
+  "BEND,OR":[44.0582,-121.3153],"MEDFORD,OR":[42.3265,-122.8756],"SPRINGFIELD,OR":[44.0462,-123.0220],
+  "CORVALLIS,OR":[44.5646,-123.2620],"ALBANY,OR":[44.6365,-123.1059],"TIGARD,OR":[45.4312,-122.7715],
+  "LAKE OSWEGO,OR":[45.4207,-122.7007],"GRANTS PASS,OR":[42.4393,-123.3284],"ROSEBURG,OR":[43.2165,-123.3417],
+  "KLAMATH FALLS,OR":[42.2249,-121.7817],
+  // ── PENNSYLVANIA ──
+  "PHILADELPHIA,PA":[39.9526,-75.1652],"PITTSBURGH,PA":[40.4406,-79.9959],"ALLENTOWN,PA":[40.6084,-75.4902],
+  "ERIE,PA":[42.1292,-80.0851],"READING,PA":[40.3356,-75.9269],"SCRANTON,PA":[41.4090,-75.6624],
+  "BETHLEHEM,PA":[40.6259,-75.3705],"LANCASTER,PA":[40.0379,-76.3055],"HARRISBURG,PA":[40.2732,-76.8867],
+  "ALTOONA,PA":[40.5187,-78.3947],"YORK,PA":[39.9626,-76.7277],"WILKES-BARRE,PA":[41.2459,-75.8813],
+  "WILKES BARRE,PA":[41.2459,-75.8813],"STATE COLLEGE,PA":[40.7934,-77.8600],"CHESTER,PA":[39.8493,-75.3557],
+  "NORRISTOWN,PA":[40.1215,-75.3399],"EASTON,PA":[40.6884,-75.2207],
+  // ── RHODE ISLAND ──
+  "PROVIDENCE,RI":[41.8240,-71.4128],"CRANSTON,RI":[41.7798,-71.4373],"PAWTUCKET,RI":[41.8787,-71.3826],
+  "WOONSOCKET,RI":[42.0029,-71.5148],"WARWICK,RI":[41.7001,-71.4162],"NEWPORT,RI":[41.4901,-71.3128],
+  // ── SOUTH CAROLINA ──
+  "COLUMBIA,SC":[34.0007,-81.0348],"CHARLESTON,SC":[32.7765,-79.9311],"NORTH CHARLESTON,SC":[32.8546,-79.9748],
+  "MOUNT PLEASANT,SC":[32.8323,-79.8284],"ROCK HILL,SC":[34.9249,-81.0251],"GREENVILLE,SC":[34.8526,-82.3940],
+  "SUMMERVILLE,SC":[33.0185,-80.1756],"SUMTER,SC":[33.9204,-80.3412],"GOOSE CREEK,SC":[32.9810,-80.0326],
+  "HILTON HEAD ISLAND,SC":[32.2163,-80.7526],"HILTON HEAD,SC":[32.2163,-80.7526],"FLORENCE,SC":[34.1954,-79.7626],
+  "SPARTANBURG,SC":[34.9496,-81.9320],"ANDERSON,SC":[34.5034,-82.6501],"AIKEN,SC":[33.5601,-81.7198],
+  // ── SOUTH DAKOTA ──
+  "SIOUX FALLS,SD":[43.5473,-96.7283],"RAPID CITY,SD":[44.0805,-103.2310],"ABERDEEN,SD":[45.4647,-98.4865],
+  "BROOKINGS,SD":[44.3114,-96.7984],"WATERTOWN,SD":[44.8997,-97.1145],
+  // ── TENNESSEE ──
+  "MEMPHIS,TN":[35.1495,-90.0490],"NASHVILLE,TN":[36.1627,-86.7816],"KNOXVILLE,TN":[35.9606,-83.9207],
+  "CHATTANOOGA,TN":[35.0456,-85.3097],"CLARKSVILLE,TN":[36.5298,-87.3595],"MURFREESBORO,TN":[35.8456,-86.3903],
+  "FRANKLIN,TN":[35.9251,-86.8689],"JACKSON,TN":[35.6145,-88.8139],"JOHNSON CITY,TN":[36.3134,-82.3535],
+  "KINGSPORT,TN":[36.5484,-82.5618],"SMYRNA,TN":[35.9828,-86.5186],"HENDERSONVILLE,TN":[36.3042,-86.6200],
+  "BRENTWOOD,TN":[36.0331,-86.7828],"COLUMBIA,TN":[35.6151,-87.0353],"SPRING HILL,TN":[35.7512,-86.9300],
+  "COOKEVILLE,TN":[36.1628,-85.5016],"MARYVILLE,TN":[35.7565,-83.9710],"BRISTOL,TN":[36.5951,-82.1887],
+  "MORRISTOWN,TN":[36.2137,-83.2946],"GALLATIN,TN":[36.3884,-86.4467],
+  // ── TEXAS ──
+  "HOUSTON,TX":[29.7604,-95.3698],"SAN ANTONIO,TX":[29.4241,-98.4936],"DALLAS,TX":[32.7767,-96.7970],
+  "AUSTIN,TX":[30.2672,-97.7431],"FORT WORTH,TX":[32.7555,-97.3308],"EL PASO,TX":[31.7619,-106.4850],
+  "ARLINGTON,TX":[32.7357,-97.1081],"CORPUS CHRISTI,TX":[27.8006,-97.3964],"PLANO,TX":[33.0198,-96.6989],
+  "LAREDO,TX":[27.5306,-99.4803],"LUBBOCK,TX":[33.5779,-101.8552],"GARLAND,TX":[32.9126,-96.6389],
+  "IRVING,TX":[32.8140,-96.9489],"AMARILLO,TX":[35.2220,-101.8313],"GRAND PRAIRIE,TX":[32.7460,-97.0208],
+  "MCKINNEY,TX":[33.1972,-96.6397],"FRISCO,TX":[33.1506,-96.8236],"BROWNSVILLE,TX":[25.9017,-97.4975],
+  "PASADENA,TX":[29.6911,-95.2091],"KILLEEN,TX":[31.1171,-97.7278],"MCALLEN,TX":[26.2034,-98.2300],
+  "MESQUITE,TX":[32.7668,-96.5992],"DENTON,TX":[33.2148,-97.1331],"WACO,TX":[31.5493,-97.1467],
+  "CARROLLTON,TX":[32.9537,-96.8903],"MIDLAND,TX":[31.9974,-102.0779],"ODESSA,TX":[31.8457,-102.3676],
+  "ABILENE,TX":[32.4487,-99.7331],"BEAUMONT,TX":[30.0860,-94.1018],"ROUND ROCK,TX":[30.5083,-97.6789],
+  "RICHARDSON,TX":[32.9482,-96.7299],"WICHITA FALLS,TX":[33.9137,-98.4934],"LEWISVILLE,TX":[33.0462,-96.9942],
+  "PEARLAND,TX":[29.5635,-95.2860],"COLLEGE STATION,TX":[30.6280,-96.3344],"TYLER,TX":[32.3513,-95.3011],
+  "LEAGUE CITY,TX":[29.5075,-95.0949],"ALLEN,TX":[33.1032,-96.6705],"SUGAR LAND,TX":[29.6196,-95.6349],
+  "EDINBURG,TX":[26.3017,-98.1633],"LONGVIEW,TX":[32.5007,-94.7405],"PHARR,TX":[26.1948,-98.1836],
+  "SAN ANGELO,TX":[31.4638,-100.4370],"MISSION,TX":[26.2159,-98.3252],"BRYAN,TX":[30.6744,-96.3698],
+  "BAYTOWN,TX":[29.7355,-94.9774],"TEMPLE,TX":[31.0982,-97.3428],"FLOWER MOUND,TX":[33.0146,-97.0969],
+  "NEW BRAUNFELS,TX":[29.7030,-98.1245],"NORTH RICHLAND HILLS,TX":[32.8343,-97.2289],"CEDAR PARK,TX":[30.5052,-97.8203],
+  "VICTORIA,TX":[28.8053,-97.0036],"CONROE,TX":[30.3119,-95.4561],"HARLINGEN,TX":[26.1906,-97.6961],
+  "TEXARKANA,TX":[33.4418,-94.0377],"ABILENE,TX":[32.4487,-99.7331],"LUBBOCK,TX":[33.5779,-101.8552],
+  "PORT ARTHUR,TX":[29.8849,-93.9396],"WACO,TX":[31.5493,-97.1467],
+  // ── UTAH ──
+  "SALT LAKE CITY,UT":[40.7608,-111.8910],"WEST VALLEY CITY,UT":[40.6916,-111.9391],
+  "PROVO,UT":[40.2338,-111.6585],"WEST JORDAN,UT":[40.6097,-111.9391],"OREM,UT":[40.2969,-111.6946],
+  "SANDY,UT":[40.5649,-111.8389],"OGDEN,UT":[41.2230,-111.9738],"ST. GEORGE,UT":[37.0965,-113.5684],
+  "SAINT GEORGE,UT":[37.0965,-113.5684],"LAYTON,UT":[41.0602,-111.9710],"TAYLORSVILLE,UT":[40.6577,-111.9388],
+  "MURRAY,UT":[40.6669,-111.8880],"HERRIMAN,UT":[40.5138,-112.0324],"LEHI,UT":[40.3916,-111.8507],
+  "DRAPER,UT":[40.5246,-111.8638],"SOUTH JORDAN,UT":[40.5622,-111.9294],"LOGAN,UT":[41.7370,-111.8338],
+  // ── VERMONT ──
+  "BURLINGTON,VT":[44.4759,-73.2121],"SOUTH BURLINGTON,VT":[44.4670,-73.1710],"RUTLAND,VT":[43.6106,-72.9726],
+  "MONTPELIER,VT":[44.2601,-72.5754],
+  // ── VIRGINIA ──
+  "VIRGINIA BEACH,VA":[36.8529,-75.9780],"NORFOLK,VA":[36.8508,-76.2859],"CHESAPEAKE,VA":[36.7682,-76.2875],
+  "RICHMOND,VA":[37.5407,-77.4360],"NEWPORT NEWS,VA":[37.0871,-76.4730],"ALEXANDRIA,VA":[38.8048,-77.0469],
+  "HAMPTON,VA":[37.0299,-76.3452],"ROANOKE,VA":[37.2710,-79.9414],"SUFFOLK,VA":[36.7282,-76.5836],
+  "LYNCHBURG,VA":[37.4138,-79.1422],"HARRISONBURG,VA":[38.4496,-78.8689],"CHARLOTTESVILLE,VA":[38.0293,-78.4767],
+  "PORTSMOUTH,VA":[36.8354,-76.2983],"MANASSAS,VA":[38.7509,-77.4753],"FREDERICKSBURG,VA":[38.3032,-77.4605],
+  "DANVILLE,VA":[36.5860,-79.3950],"ARLINGTON,VA":[38.8799,-77.1068],"BLACKSBURG,VA":[37.2296,-80.4139],
+  // ── WASHINGTON ──
+  "SEATTLE,WA":[47.6062,-122.3321],"SPOKANE,WA":[47.6588,-117.4260],"TACOMA,WA":[47.2529,-122.4443],
+  "VANCOUVER,WA":[45.6387,-122.6615],"BELLEVUE,WA":[47.6101,-122.2015],"KENT,WA":[47.3809,-122.2348],
+  "EVERETT,WA":[47.9790,-122.2021],"RENTON,WA":[47.4829,-122.2171],"SPOKANE VALLEY,WA":[47.6732,-117.2394],
+  "FEDERAL WAY,WA":[47.3223,-122.3126],"KIRKLAND,WA":[47.6815,-122.2087],"BELLINGHAM,WA":[48.7519,-122.4787],
+  "KENNEWICK,WA":[46.2112,-119.1372],"YAKIMA,WA":[46.6021,-120.5059],"REDMOND,WA":[47.6740,-122.1215],
+  "MARYSVILLE,WA":[48.0512,-122.1771],"PASCO,WA":[46.2396,-119.1006],"RICHLAND,WA":[46.2860,-119.2841],
+  "SAMMAMISH,WA":[47.6163,-122.0356],"OLYMPIA,WA":[47.0379,-122.9007],"SHORELINE,WA":[47.7557,-122.3415],
+  "LAKEWOOD,WA":[47.1718,-122.5185],"BURIEN,WA":[47.4707,-122.3462],"WALLA WALLA,WA":[46.0647,-118.3430],
+  // ── WEST VIRGINIA ──
+  "CHARLESTON,WV":[38.3498,-81.6326],"HUNTINGTON,WV":[38.4192,-82.4452],"PARKERSBURG,WV":[39.2667,-81.5615],
+  "MORGANTOWN,WV":[39.6295,-79.9559],"WHEELING,WV":[40.0640,-80.7209],
+  // ── WISCONSIN ──
+  "MILWAUKEE,WI":[43.0389,-87.9065],"MADISON,WI":[43.0731,-89.4012],"GREEN BAY,WI":[44.5133,-88.0133],
+  "KENOSHA,WI":[42.5847,-87.8212],"RACINE,WI":[42.7261,-87.7829],"APPLETON,WI":[44.2619,-88.4154],
+  "WAUKESHA,WI":[43.0117,-88.2315],"OSHKOSH,WI":[44.0247,-88.5426],"EAU CLAIRE,WI":[44.8113,-91.4985],
+  "JANESVILLE,WI":[42.6828,-89.0187],"LA CROSSE,WI":[43.8014,-91.2396],"SHEBOYGAN,WI":[43.7508,-87.7145],
+  "WAUSAU,WI":[44.9591,-89.6301],"FOND DU LAC,WI":[43.7730,-88.4471],"BROOKFIELD,WI":[43.0606,-88.1065],
+  "NEW BERLIN,WI":[42.9759,-88.1084],"WAUWATOSA,WI":[43.0495,-88.0076],"WEST ALLIS,WI":[43.0167,-88.0073],
+  "BELOIT,WI":[42.5083,-89.0318],"SUPERIOR,WI":[46.7208,-92.1041],
+  // ── WYOMING ──
+  "CHEYENNE,WY":[41.1400,-104.8202],"CASPER,WY":[42.8666,-106.3131],"LARAMIE,WY":[41.3114,-105.5911],
+  "GILLETTE,WY":[44.2911,-105.5024],"ROCK SPRINGS,WY":[41.5875,-109.2029],
+  // ── WASHINGTON DC ──
+  "WASHINGTON,DC":[38.9072,-77.0369],
+  // ── COMMON ALIASES & ABBREVIATIONS ──
+  "NYC,NY":[40.7128,-74.0060],"NEW YORK CITY,NY":[40.7128,-74.0060],
+  "LA,CA":[34.0522,-118.2437],"SFO,CA":[37.7749,-122.4194],"SAN FRAN,CA":[37.7749,-122.4194],
+  "PHILLY,PA":[39.9526,-75.1652],"INDY,IN":[39.7684,-86.1581],
+  "STLOUIS,MO":[38.6270,-90.1994],"FT WORTH,TX":[32.7555,-97.3308],"FT. WORTH,TX":[32.7555,-97.3308],
+  "FT LAUDERDALE,FL":[26.1224,-80.1373],"FT. LAUDERDALE,FL":[26.1224,-80.1373],
+  "FT WAYNE,IN":[41.0793,-85.1394],"FT. WAYNE,IN":[41.0793,-85.1394],
+  "FT SMITH,AR":[35.3859,-94.3985],"FT. SMITH,AR":[35.3859,-94.3985],
+  "FT MYERS,FL":[26.6406,-81.8723],"FT. MYERS,FL":[26.6406,-81.8723],
+  "FT COLLINS,CO":[40.5853,-105.0844],"FT. COLLINS,CO":[40.5853,-105.0844],
+  "OKC,OK":[35.4676,-97.5164],"KC,MO":[39.0997,-94.5786],"KC,KS":[39.1142,-94.6275],
+  "NOLA,LA":[29.9511,-90.0715],"N LITTLE ROCK,AR":[34.7695,-92.2671],
+  "S BEND,IN":[41.6764,-86.2520],"W PALM BEACH,FL":[26.7153,-80.0534],
+  "SAINT LOUIS,MO":[38.6270,-90.1994],"SAINT PAUL,MN":[44.9537,-93.0900],
+  "SAINT GEORGE,UT":[37.0965,-113.5684],"SAINT JOSEPH,MO":[39.7675,-94.8467],
+  "SAINT CHARLES,MO":[38.7881,-90.4974],"SAINT PETERSBURG,FL":[27.7731,-82.6400],
+  // ── MANUFACTURED HOME DELIVERY CITIES ──
+  "ADDISON,AL":[34.2001,-87.1772],
+  "ALBERTVILLE,AL":[34.2676,-86.2089],
+  "ATHENS,AL":[34.8026,-86.9716],
+  "ARAB,AL":[34.3248,-86.4972],
+  "ATMORE,AL":[31.0227,-87.4939],
+  "ATTALLA,AL":[34.0162,-86.0875],
+  "BAY MINETTE,AL":[30.8827,-87.7731],
+  "BOAZ,AL":[34.2009,-86.1561],
+  "BREWTON,AL":[31.1057,-87.0722],
+  "CALERA,AL":[33.1073,-86.7525],
+  "CENTER POINT,AL":[33.6454,-86.6836],
+  "CLANTON,AL":[32.8368,-86.6294],
+  "COLUMBIANA,AL":[33.1765,-86.6097],
+  "CULLMAN,AL":[34.1748,-86.8436],
+  "DAPHNE,AL":[30.6035,-87.9036],
+  "ENTERPRISE,AL":[31.3152,-85.8552],
+  "EUFAULA,AL":[31.8913,-85.1455],
+  "FAIRHOPE,AL":[30.5182,-87.9033],
+  "FAYETTE,AL":[33.6843,-87.8311],
+  "FLORENCE,AL":[34.7998,-87.6773],
+  "FOLEY,AL":[30.406,-87.6836],
+  "FORT PAYNE,AL":[34.4443,-85.7197],
+  "GARDENDALE,AL":[33.6573,-86.8119],
+  "GREENVILLE,AL":[31.8291,-86.6211],
+  "GROVE HILL,AL":[31.7085,-87.7731],
+  "GUNTERSVILLE,AL":[34.3579,-86.2944],
+  "HAMILTON,AL":[34.1423,-87.9886],
+  "HARTSELLE,AL":[34.4432,-86.9411],
+  "HELENA,AL":[33.2962,-86.8436],
+  "HUEYTOWN,AL":[33.4651,-87.0139],
+  "IRONDALE,AL":[33.5387,-86.7044],
+  "JACKSONVILLE,AL":[33.8143,-85.7597],
+  "JASPER,AL":[33.8312,-87.2783],
+  "KILLEN,AL":[34.8773,-87.5411],
+  "LACEY SPRINGS,AL":[34.4765,-86.5169],
+  "LEEDS,AL":[33.5487,-86.5683],
+  "LINCOLN,AL":[33.6073,-86.1211],
+  "LINDEN,AL":[32.3004,-87.7925],
+  "MADISON,AL":[34.6993,-86.7483],
+  "MOULTON,AL":[34.4823,-87.2939],
+  "NORTHPORT,AL":[33.2343,-87.5811],
+  "ONEONTA,AL":[33.9487,-86.4736],
+  "OPELIKA,AL":[32.6454,-85.3783],
+  "OPP,AL":[31.2835,-86.2572],
+  "OXFORD,AL":[33.6143,-85.8347],
+  "OZARK,AL":[31.4596,-85.6408],
+  "PELHAM,AL":[33.2843,-86.8094],
+  "PELL CITY,AL":[33.5862,-86.2861],
+  "PHENIX CITY,AL":[32.4696,-85.0005],
+  "PIEDMONT,AL":[33.9187,-85.6111],
+  "PRATTVILLE,AL":[32.464,-86.4597],
+  "RAINSVILLE,AL":[34.4943,-85.8478],
+  "ROANOKE,AL":[33.1515,-85.37],
+  "RUSSELLVILLE,AL":[34.5076,-87.7286],
+  "SARALAND,AL":[30.821,-88.0747],
+  "SCOTTSBORO,AL":[34.6721,-86.0344],
+  "SELMA,AL":[32.4074,-87.0211],
+  "SHEFFIELD,AL":[34.7651,-87.6983],
+  "SYLACAUGA,AL":[33.1732,-86.2511],
+  "TALLADEGA,AL":[33.4354,-86.1058],
+  "TRUSSVILLE,AL":[33.6198,-86.6069],
+  "TROY,AL":[31.7996,-85.9697],
+  "TUSKEGEE,AL":[32.4307,-85.7069],
+  "VESTAVIA HILLS,AL":[33.451,-86.7939],
+  "WETUMPKA,AL":[32.5435,-86.2097],
+  "WINFIELD,AL":[33.9257,-87.8178],
+  "ALCOA,TN":[35.7898,-83.9738],
+  "ANDERSONVILLE,TN":[36.1967,-83.7427],
+  "ATHENS,TN":[35.4429,-84.5994],
+  "BRISTOL,TN":[36.5951,-82.1887],
+  "BROWNSVILLE,TN":[35.5951,-89.262],
+  "CENTERVILLE,TN":[35.7787,-87.4661],
+  "CLEVELAND,TN":[35.1595,-84.8766],
+  "COLLIERVILLE,TN":[35.0423,-89.6645],
+  "COOKEVILLE,TN":[36.1628,-85.5016],
+  "COVINGTON,TN":[35.5643,-89.6462],
+  "CROSSVILLE,TN":[35.9489,-85.0269],
+  "DICKSON,TN":[36.077,-87.3878],
+  "DYERSBURG,TN":[36.0345,-89.3845],
+  "ELIZABETHTON,TN":[36.3487,-82.2107],
+  "ERWIN,TN":[36.1434,-82.4163],
+  "ETOWAH,TN":[35.3245,-84.5302],
+  "FAYETTEVILLE,TN":[35.152,-86.5672],
+  "GERMANTOWN,TN":[35.087,-89.8101],
+  "GREENEVILLE,TN":[36.1634,-82.8318],
+  "HARRIMAN,TN":[35.9345,-84.5527],
+  "HENDERSON,TN":[35.4387,-88.6445],
+  "HUMBOLDT,TN":[35.8173,-88.912],
+  "JACKSON,TN":[35.6145,-88.8139],
+  "JAMESTOWN,TN":[36.4284,-84.9327],
+  "JONESBOROUGH,TN":[36.2943,-82.4766],
+  "LA FOLLETTE,TN":[36.382,-84.1207],
+  "LAFAYETTE,TN":[36.522,-86.0261],
+  "LAWRENCEBURG,TN":[35.2423,-87.3317],
+  "LEBANON,TN":[36.2081,-86.2911],
+  "LENOIR CITY,TN":[35.7951,-84.2527],
+  "LEWISBURG,TN":[35.449,-86.788],
+  "LIVINGSTON,TN":[36.3834,-85.323],
+  "LYNCHBURG,TN":[35.2798,-86.3742],
+  "MANCHESTER,TN":[35.4815,-86.0886],
+  "MARTIN,TN":[36.3434,-88.8506],
+  "MARYVILLE,TN":[35.7565,-83.971],
+  "MCMINNVILLE,TN":[35.6834,-85.7697],
+  "MILAN,TN":[35.9198,-88.7567],
+  "MILLINGTON,TN":[35.3415,-89.8978],
+  "MOUNTAIN CITY,TN":[36.4773,-81.7957],
+  "NEWPORT,TN":[35.9673,-83.1874],
+  "OAK RIDGE,TN":[36.0104,-84.2696],
+  "PARIS,TN":[36.302,-88.327],
+  "PORTLAND,TN":[36.5817,-86.5133],
+  "PULASKI,TN":[35.1998,-87.0314],
+  "RED BANK,TN":[35.1123,-85.2963],
+  "RIPLEY,TN":[35.7456,-89.5284],
+  "SAVANNAH,TN":[35.2248,-88.2503],
+  "SEVIERVILLE,TN":[35.8679,-83.5616],
+  "SHELBYVILLE,TN":[35.4834,-86.4605],
+  "SMITHVILLE,TN":[35.9612,-85.8169],
+  "SPRING HILL,TN":[35.7512,-86.93],
+  "SPRINGFIELD,TN":[36.5092,-86.8852],
+  "SWEETWATER,TN":[35.5984,-84.4602],
+  "TULLAHOMA,TN":[35.362,-86.2094],
+  "UNION CITY,TN":[36.4245,-89.057],
+  "WHITE PINE,TN":[36.1073,-83.2902],
+  "WINCHESTER,TN":[35.1856,-86.1122],
+  "ALBEMARLE,NC":[35.3501,-80.1984],
+  "ASHEBORO,NC":[35.7076,-79.8139],
+  "BOONE,NC":[36.2168,-81.6746],
+  "BREVARD,NC":[35.2337,-82.7343],
+  "BRYSON CITY,NC":[35.4279,-83.4496],
+  "BURNSVILLE,NC":[35.9148,-82.2996],
+  "CANTON,NC":[35.5326,-82.8371],
+  "DUNN,NC":[35.3076,-78.6089],
+  "EDEN,NC":[36.4946,-79.7428],
+  "ELIZABETHTOWN,NC":[34.6315,-78.6047],
+  "ELKIN,NC":[36.244,-80.8484],
+  "FOREST CITY,NC":[35.3343,-81.8648],
+  "GOLDSBORO,NC":[35.3851,-77.9925],
+  "GRAHAM,NC":[36.0679,-79.3981],
+  "GRANITE FALLS,NC":[35.7987,-81.4306],
+  "HENDERSONVILLE,NC":[35.3168,-82.461],
+  "HICKORY,NC":[35.7329,-81.3412],
+  "HOPE MILLS,NC":[34.9715,-78.945],
+  "INDIAN TRAIL,NC":[35.0765,-80.6526],
+  "KANNAPOLIS,NC":[35.4876,-80.6212],
+  "KERNERSVILLE,NC":[36.1198,-80.0737],
+  "KINGS MOUNTAIN,NC":[35.2454,-81.3428],
+  "KINSTON,NC":[35.2626,-77.5816],
+  "LAURINBURG,NC":[34.7737,-79.4653],
+  "LELAND,NC":[34.2165,-78.0333],
+  "LENOIR,NC":[35.9137,-81.5412],
+  "LEXINGTON,NC":[35.8237,-80.2534],
+  "LINCOLNTON,NC":[35.4737,-81.2537],
+  "LUMBERTON,NC":[34.6182,-79.0142],
+  "MONROE,NC":[34.9854,-80.549],
+  "MOORESVILLE,NC":[35.5848,-80.8098],
+  "MOREHEAD CITY,NC":[34.7226,-76.7258],
+  "MORGANTON,NC":[35.7451,-81.6849],
+  "MOUNT AIRY,NC":[36.499,-80.6073],
+  "MOUNT HOLLY,NC":[35.2979,-81.0162],
+  "NASHVILLE,NC":[35.974,-77.9653],
+  "NEW BERN,NC":[35.1085,-77.0441],
+  "NEWTON,NC":[35.6701,-81.2223],
+  "OXFORD,NC":[36.3112,-78.5897],
+  "REIDSVILLE,NC":[36.3551,-79.6639],
+  "ROANOKE RAPIDS,NC":[36.4615,-77.653],
+  "ROCKINGHAM,NC":[34.9398,-79.7717],
+  "ROCKWELL,NC":[35.5512,-80.4073],
+  "ROXBORO,NC":[36.3954,-78.9836],
+  "SANFORD,NC":[35.4798,-79.1803],
+  "SHELBY,NC":[35.2923,-81.5354],
+  "SMITHFIELD,NC":[35.5087,-78.3392],
+  "STATESVILLE,NC":[35.7826,-80.8873],
+  "TARBORO,NC":[35.9051,-77.5358],
+  "THOMASVILLE,NC":[35.8826,-80.0823],
+  "TROY,NC":[35.3587,-79.8889],
+  "WADESBORO,NC":[34.9726,-80.0684],
+  "WAKE FOREST,NC":[35.9796,-78.5097],
+  "WASHINGTON,NC":[35.5465,-77.0533],
+  "WAYNESVILLE,NC":[35.4887,-82.9924],
+  "WILSON,NC":[35.7215,-77.9152],
+  "ZEBULON,NC":[35.824,-78.3122],
+  "AMERICUS,GA":[32.0724,-84.2327],
+  "BAINBRIDGE,GA":[30.9035,-84.5752],
+  "BLAIRSVILLE,GA":[34.8768,-83.9571],
+  "BLUE RIDGE,GA":[34.8637,-84.3238],
+  "BRUNSWICK,GA":[31.1499,-81.4915],
+  "CALHOUN,GA":[34.5026,-84.9514],
+  "CANTON,GA":[34.2368,-84.4913],
+  "CARROLLTON,GA":[33.5801,-85.0766],
+  "CARTERSVILLE,GA":[34.1654,-84.7996],
+  "CHATSWORTH,GA":[34.7654,-84.7699],
+  "CONYERS,GA":[33.6682,-84.0177],
+  "CORDELE,GA":[31.9643,-83.7741],
+  "CORNELIA,GA":[34.5137,-83.526],
+  "COVINGTON,GA":[33.5968,-83.8602],
+  "CUMMING,GA":[34.2073,-84.1402],
+  "DALLAS,GA":[33.924,-84.8419],
+  "DALTON,GA":[34.7698,-84.9702],
+  "DAWSONVILLE,GA":[34.4226,-84.1174],
+  "DOUGLAS,GA":[31.5085,-82.8488],
+  "DOUGLASVILLE,GA":[33.7515,-84.7477],
+  "DUBLIN,GA":[32.5407,-82.9035],
+  "EATONTON,GA":[33.3243,-83.3885],
+  "ELBERTON,GA":[34.1065,-82.8696],
+  "ELLIJAY,GA":[34.6943,-84.4824],
+  "FITZGERALD,GA":[31.7149,-83.2566],
+  "FORT VALLEY,GA":[32.5535,-83.8888],
+  "GRIFFIN,GA":[33.2468,-84.2638],
+  "HARTWELL,GA":[34.3526,-82.9324],
+  "HINESVILLE,GA":[31.846,-81.5957],
+  "JASPER,GA":[34.4665,-84.4277],
+  "JESUP,GA":[31.5996,-81.8849],
+  "KENNESAW,GA":[34.0234,-84.6157],
+  "LAGRANGE,GA":[33.0398,-85.0316],
+  "LAWRENCEVILLE,GA":[33.9526,-83.9877],
+  "MILLEDGEVILLE,GA":[33.0801,-83.2313],
+  "MONROE,GA":[33.7954,-83.7144],
+  "MOULTRIE,GA":[31.181,-83.7891],
+  "NEWNAN,GA":[33.3807,-84.7996],
+  "PERRY,GA":[32.4585,-83.7313],
+  "RINGGOLD,GA":[34.9154,-85.1088],
+  "ROCKMART,GA":[34.0026,-85.0455],
+  "ROME,GA":[34.257,-85.1647],
+  "STATESBORO,GA":[32.4488,-81.7832],
+  "SYLVESTER,GA":[31.531,-83.8366],
+  "THOMASTON,GA":[32.8885,-84.3296],
+  "THOMASVILLE,GA":[30.8368,-83.9788],
+  "TIFTON,GA":[31.451,-83.5088],
+  "TOCCOA,GA":[34.5765,-83.3313],
+  "VIDALIA,GA":[32.2174,-82.4138],
+  "WARNER ROBINS,GA":[32.613,-83.5996],
+  "WAYCROSS,GA":[31.2135,-82.3549],
+  "WAYNESBORO,GA":[33.0899,-82.0149],
+  "WINDER,GA":[33.9943,-83.7202],
+  "ATHENS,TX":[32.2043,-95.8513],
+  "BELTON,TX":[31.0549,-97.4641],
+  "CORSICANA,TX":[32.0957,-96.4689],
+  "HENDERSON,TX":[32.1535,-94.7994],
+  "HUNTSVILLE,TX":[30.7235,-95.5508],
+  "JACKSONVILLE,TX":[31.9635,-95.2702],
+  "JASPER,TX":[30.921,-93.9988],
+  "LIVINGSTON,TX":[30.711,-94.9358],
+  "LUFKIN,TX":[31.3382,-94.7291],
+  "MARSHALL,TX":[32.5446,-94.3677],
+  "NACOGDOCHES,TX":[31.6035,-94.6552],
+  "NAVASOTA,TX":[30.3874,-96.0869],
+  "PALESTINE,TX":[31.7618,-95.6313],
+  "PARIS,TX":[33.6609,-95.5555],
+  "SULPHUR SPRINGS,TX":[33.1385,-95.6008],
+  "TRINITY,TX":[30.9485,-95.373],
+  "WEATHERFORD,TX":[32.7596,-97.7975],
+  "ABERDEEN,MS":[33.8249,-88.5445],
+  "BATESVILLE,MS":[34.3115,-89.9437],
+  "BRANDON,MS":[32.2732,-89.987],
+  "BROOKHAVEN,MS":[31.5796,-90.4415],
+  "CANTON,MS":[32.6124,-90.0368],
+  "CLARKSDALE,MS":[34.2004,-90.5707],
+  "COLUMBIA,MS":[31.2524,-89.8337],
+  "COLUMBUS,MS":[33.4957,-88.4273],
+  "CORINTH,MS":[34.9343,-88.5223],
+  "GREENWOOD,MS":[33.5163,-90.1798],
+  "GRENADA,MS":[33.7693,-89.8087],
+  "HERNANDO,MS":[34.8343,-89.9937],
+  "INDIANOLA,MS":[33.4507,-90.6554],
+  "KOSCIUSKO,MS":[33.0579,-89.5887],
+  "LAUREL,MS":[31.6943,-89.1307],
+  "LOUISVILLE,MS":[33.1229,-89.0551],
+  "MCCOMB,MS":[31.2438,-90.4537],
+  "NATCHEZ,MS":[31.5604,-91.4032],
+  "NEW ALBANY,MS":[34.4943,-89.0079],
+  "OCEAN SPRINGS,MS":[30.4113,-88.8323],
+  "PASCAGOULA,MS":[30.3657,-88.5561],
+  "PEARL,MS":[32.2746,-90.1126],
+  "PICAYUNE,MS":[30.5257,-89.6787],
+  "PONTOTOC,MS":[34.2482,-89.0051],
+  "RIDGELAND,MS":[32.4282,-90.1326],
+  "SENATOBIA,MS":[34.6179,-89.9687],
+  "STARKVILLE,MS":[33.4596,-88.8198],
+  "VICKSBURG,MS":[32.3526,-90.8779],
+  "WAYNESBORO,MS":[31.6749,-88.6465],
+  "WOODLAND,MS":[33.7982,-89.1162],
+  "YAZOO CITY,MS":[32.8554,-90.4057],
+  "AIKEN,SC":[33.5601,-81.7198],
+  "BEAUFORT,SC":[32.4316,-80.6698],
+  "CAMDEN,SC":[34.2465,-80.6068],
+  "CHESTER,SC":[34.7065,-81.214],
+  "CLINTON,SC":[34.4732,-81.879],
+  "CONWAY,SC":[33.8357,-79.0453],
+  "DARLINGTON,SC":[34.2996,-79.8753],
+  "EASLEY,SC":[34.8298,-82.6015],
+  "GAFFNEY,SC":[35.0718,-81.6498],
+  "GREER,SC":[34.9382,-82.2268],
+  "HARTSVILLE,SC":[34.3732,-80.0751],
+  "LANCASTER,SC":[34.7204,-80.7712],
+  "MANNING,SC":[33.6954,-80.2134],
+  "MYRTLE BEACH,SC":[33.689,-78.8867],
+  "NEWBERRY,SC":[34.2732,-81.6151],
+  "ORANGEBURG,SC":[33.4918,-80.8651],
+  "SENECA,SC":[34.6857,-82.954],
+  "SIMPSONVILLE,SC":[34.7371,-82.2543],
+  "UNION,SC":[34.7154,-81.6237],
+  "WALTERBORO,SC":[32.9054,-80.6712],
+  "WINNSBORO,SC":[34.3818,-81.0862],
+  "YORK,SC":[34.9946,-81.2362],
+  "ABINGDON,VA":[36.7098,-81.9774],
+  "BEDFORD,VA":[37.334,-79.5231],
+  "BRISTOL,VA":[36.5951,-82.1887],
+  "COVINGTON,VA":[37.7937,-79.9942],
+  "CULPEPER,VA":[38.4732,-77.9964],
+  "EMPORIA,VA":[36.6868,-77.5397],
+  "FRANKLIN,VA":[36.6779,-76.9222],
+  "FRONT ROYAL,VA":[38.9182,-78.1942],
+  "GALAX,VA":[36.6612,-80.9237],
+  "HOPEWELL,VA":[37.3043,-77.2872],
+  "LEBANON,VA":[36.8976,-82.0766],
+  "LEESBURG,VA":[39.1151,-77.5636],
+  "LEXINGTON,VA":[37.7843,-79.4428],
+  "MARTINSVILLE,VA":[36.6915,-79.8717],
+  "PULASKI,VA":[37.0487,-80.7762],
+  "RADFORD,VA":[37.1318,-80.5762],
+  "ROCKY MOUNT,VA":[36.9976,-79.892],
+  "STAUNTON,VA":[38.1493,-79.0717],
+  "TAZEWELL,VA":[37.1143,-81.5199],
+  "WARRENTON,VA":[38.7212,-77.7961],
+  "WAYNESBORO,VA":[38.0682,-78.8894],
+  "WISE,VA":[36.9754,-82.5757],
+  "WYTHEVILLE,VA":[36.9487,-81.0845],
+  "BARBOURSVILLE,WV":[38.4098,-82.2985],
+  "BECKLEY,WV":[37.7782,-81.1876],
+  "BUCKHANNON,WV":[38.9926,-80.2328],
+  "CLARKSBURG,WV":[39.2815,-80.3431],
+  "ELKINS,WV":[38.9262,-79.8467],
+  "FAIRMONT,WV":[39.4851,-80.1423],
+  "LEWISBURG,WV":[37.7998,-80.4445],
+  "LOGAN,WV":[37.8487,-81.9921],
+  "PRINCETON,WV":[37.3651,-81.1001],
+  "SUMMERSVILLE,WV":[38.2823,-80.8512],
+  "ASHLAND,KY":[38.4784,-82.6379],
+  "BARDSTOWN,KY":[37.8101,-85.4669],
+  "CAMPBELLSVILLE,KY":[37.3432,-85.3413],
+  "CORBIN,KY":[36.9484,-84.0966],
+  "DANVILLE,KY":[37.6459,-84.7722],
+  "FRANKFORT,KY":[38.2009,-84.8733],
+  "GLASGOW,KY":[37.0001,-85.9119],
+  "HARLAN,KY":[36.8432,-83.3219],
+  "HAZARD,KY":[37.2487,-83.1933],
+  "HENDERSON,KY":[37.8365,-87.59],
+  "HOPKINSVILLE,KY":[36.8656,-87.4886],
+  "JACKSON,KY":[37.5537,-83.3852],
+  "LONDON,KY":[37.129,-84.0833],
+  "MADISONVILLE,KY":[37.3284,-87.4989],
+  "MAYFIELD,KY":[36.7415,-88.6367],
+  "MIDDLESBORO,KY":[36.6084,-83.7185],
+  "MOREHEAD,KY":[38.184,-83.4327],
+  "MURRAY,KY":[36.6101,-88.3145],
+  "PIKEVILLE,KY":[37.4793,-82.5188],
+  "PRESTONSBURG,KY":[37.6637,-82.7727],
+  "RUSSELLVILLE,KY":[36.8443,-86.8847],
+  "SOMERSET,KY":[37.092,-84.6041],
+  "WINCHESTER,KY":[37.9901,-84.1797],
+  "BATESVILLE,AR":[35.7695,-91.6407],
+  "BENTON,AR":[34.5648,-92.5868],
+  "BLYTHEVILLE,AR":[35.927,-89.9187],
+  "CLARKSVILLE,AR":[35.4715,-93.4663],
+  "CONWAY,AR":[35.0887,-92.4421],
+  "EL DORADO,AR":[33.211,-92.6663],
+  "FORREST CITY,AR":[35.0084,-90.7898],
+  "HARRISON,AR":[36.2298,-93.1077],
+  "HOPE,AR":[33.6665,-93.5919],
+  "HOT SPRINGS,AR":[34.5037,-93.0552],
+  "JONESBORO,AR":[35.8423,-90.7043],
+  "MAGNOLIA,AR":[33.2668,-93.2396],
+  "MALVERN,AR":[34.3623,-92.8135],
+  "MONTICELLO,AR":[33.629,-91.7874],
+  "MOUNTAIN HOME,AR":[36.3354,-92.3852],
+  "NASHVILLE,AR":[33.9429,-93.8469],
+  "PARAGOULD,AR":[36.0584,-90.4979],
+  "PINE BLUFF,AR":[34.2284,-92.0032],
+  "RUSSELLVILLE,AR":[35.2784,-93.1338],
+  "SEARCY,AR":[35.2506,-91.736],
+  "VAN BUREN,AR":[35.4368,-94.3479],
+  "WEST MEMPHIS,AR":[35.1462,-90.1843],
+  "BASTROP,LA":[32.7785,-91.909],
+  "BOGALUSA,LA":[30.791,-89.8487],
+  "CROWLEY,LA":[30.2138,-92.3746],
+  "DENHAM SPRINGS,LA":[30.4877,-90.9565],
+  "HAMMOND,LA":[30.5044,-90.4612],
+  "JENNINGS,LA":[30.2227,-92.6568],
+  "LEESVILLE,LA":[31.1449,-93.2613],
+  "MINDEN,LA":[32.6154,-93.2874],
+  "NATCHITOCHES,LA":[31.7607,-93.0863],
+  "NEW IBERIA,LA":[30.0035,-91.8188],
+  "OPELOUSAS,LA":[30.5335,-92.0824],
+  "RUSTON,LA":[32.5238,-92.6382],
+  "SULPHUR,LA":[30.2366,-93.3763],
+  "THIBODAUX,LA":[29.7963,-90.8201],
+  "WINNFIELD,LA":[31.9249,-92.6368]
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// ROBUST getCoords — handles trailing spaces, hidden chars,
+// punctuation variants, and common abbreviations
+// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// GEOCODE CACHE — stores API results for cities not in local DB
+// ═══════════════════════════════════════════════════════════════════
+const geocodeCache = {};  // key: "CITY,ST" → [lat, lng] or null
+
+// Normalize a city/state string consistently
+function normCity(city, state) {
+  const clean = s => String(s)
+    .replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, ' ')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .trim().replace(/\s+/g, ' ').toUpperCase();
+  return `${clean(city)},${clean(state)}`;
+}
+
+// US state abbreviation → full name (for Nominatim queries)
+const STATE_NAMES = {
+  AL:'Alabama',AK:'Alaska',AZ:'Arizona',AR:'Arkansas',CA:'California',CO:'Colorado',
+  CT:'Connecticut',DE:'Delaware',FL:'Florida',GA:'Georgia',HI:'Hawaii',ID:'Idaho',
+  IL:'Illinois',IN:'Indiana',IA:'Iowa',KS:'Kansas',KY:'Kentucky',LA:'Louisiana',
+  ME:'Maine',MD:'Maryland',MA:'Massachusetts',MI:'Michigan',MN:'Minnesota',MS:'Mississippi',
+  MO:'Missouri',MT:'Montana',NE:'Nebraska',NV:'Nevada',NH:'New Hampshire',NJ:'New Jersey',
+  NM:'New Mexico',NY:'New York',NC:'North Carolina',ND:'North Dakota',OH:'Ohio',
+  OK:'Oklahoma',OR:'Oregon',PA:'Pennsylvania',RI:'Rhode Island',SC:'South Carolina',
+  SD:'South Dakota',TN:'Tennessee',TX:'Texas',UT:'Utah',VT:'Vermont',VA:'Virginia',
+  WA:'Washington',WV:'West Virginia',WI:'Wisconsin',WY:'Wyoming',DC:'District of Columbia'
+};
+
+// Look up a city — tries local DB first, then Nominatim API fallback
+// NOTE: Nominatim works when the file is opened locally in your browser.
+// Nominatim ToS: max 1 req/sec, no bulk usage. We batch with delays to comply.
+async function geocodeCity(city, state) {
+  const key = normCity(city, state);
+  if (geocodeCache[key] !== undefined) return geocodeCache[key];
+
+  // Step 1: local DB (instant)
+  const local = getCoordsLocal(city, state);
+  if (local) { geocodeCache[key] = local; return local; }
+
+  // Step 2: Nominatim API fallback
+  try {
+    const stateName = STATE_NAMES[state.toUpperCase().trim()] || state;
+    const q = encodeURIComponent(`${city.trim()}, ${stateName}, USA`);
+    const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=us`;
+    const resp = await fetch(url, {
+      headers: { 'Accept-Language': 'en', 'User-Agent': 'ClaytonBackhaulMatcher/1.0' }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodeCache[key] = coords;
+      CITY_COORDS[key] = coords;  // cache in local DB for instant reuse
+      return coords;
+    }
+  } catch(e) {
+    // API unavailable (offline, CSP, rate-limited) — mark null so we don't retry
+    console.warn(`Geocode failed for ${city}, ${state}:`, e.message);
+  }
+
+  geocodeCache[key] = null;
+  return null;
+}
+
+// Geocode all unknown cities in the loaded shipments, with a progress indicator
+// Geocode all unknown cities — local DB first, Nominatim API for remainder
+// Progress callback receives (doneCount, totalUniqueUnknowns)
+async function geocodeAllUnknown(onProgress) {
+  const unknownKeys = new Set();
+  for (const s of shipments) {
+    for (const [city, state] of [[s.originCity, s.originState],[s.destCity, s.destState]]) {
+      if (!city || !state) continue;
+      const key = normCity(city, state);
+      if (geocodeCache[key] === undefined && !getCoordsLocal(city, state)) {
+        unknownKeys.add(key);
+      }
+    }
+  }
+  const keys = [...unknownKeys];
+  if (!keys.length) return;
+
+  // Nominatim ToS: ≤ 1 req/sec — run 3 parallel with 350ms stagger = ~1/sec aggregate
+  const CONCURRENCY = 3, STAGGER_MS = 350;
+  let done = 0;
+
+  async function runOne(key, delayMs) {
+    await new Promise(r => setTimeout(r, delayMs));
+    const commaIdx = key.indexOf(',');
+    const city  = key.slice(0, commaIdx);
+    const state = key.slice(commaIdx + 1);
+    await geocodeCity(city, state);
+    done++;
+    if (onProgress) onProgress(done, keys.length);
+  }
+
+  for (let i = 0; i < keys.length; i += CONCURRENCY) {
+    const batch = keys.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map((key, idx) => runOne(key, idx * STAGGER_MS)));
+    if (i + CONCURRENCY < keys.length) {
+      await new Promise(r => setTimeout(r, 1100));
+    }
+  }
+}
+
+// Synchronous local-DB-only lookup (used internally)
+function getCoordsLocal(city, state) {
+  if (!city || !state) return null;
+  const clean = s => String(s)
+    .replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, ' ')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .trim().replace(/\s+/g, ' ').toUpperCase();
+  const cleanCity = clean(city);
+  const cleanState = clean(state);
+  if (!cleanCity || !cleanState) return null;
+  const key = `${cleanCity},${cleanState}`;
+  if (CITY_COORDS[key]) return CITY_COORDS[key];
+  const alpha = s => s.replace(/[^A-Z,]/g, '');
+  const exact = Object.keys(CITY_COORDS).find(k => alpha(k) === alpha(key));
+  if (exact) return CITY_COORDS[exact];
+  const letters = s => s.replace(/[^A-Z]/g, '');
+  const loose = Object.keys(CITY_COORDS).find(k => {
+    const [kc,ks] = k.split(',');
+    return letters(kc) === letters(cleanCity) && letters(ks) === letters(cleanState);
+  });
+  if (loose) return CITY_COORDS[loose];
+  const sw = Object.keys(CITY_COORDS).find(k => {
+    const [kc,ks] = k.split(',');
+    return ks === cleanState && (kc.startsWith(cleanCity) || cleanCity.startsWith(kc));
+  });
+  if (sw) return CITY_COORDS[sw];
+  return null;
+}
+
+// Public getCoords — checks cache first, then local DB
+function getCoords(city, state) {
+  if (!city || !state) return null;
+  const key = normCity(city, state);
+  if (geocodeCache[key] !== undefined) return geocodeCache[key];
+  return getCoordsLocal(city, state);
+}
+
+function haversine(a,b,c,d){const R=3958.8,r=Math.PI/180,dL=(c-a)*r,dN=(d-b)*r;const x=Math.sin(dL/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dN/2)**2;return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function distanceMiles(c1,s1,c2,s2){const a=getCoords(c1,s1),b=getCoords(c2,s2);if(!a||!b)return null;return Math.round(haversine(a[0],a[1],b[0],b[1]));}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════════════════
+function goTo(n){[1,2,3,4].forEach(i=>{document.getElementById('panel'+i).classList.toggle('visible',i===n);const s=document.getElementById('step'+i);s.classList.remove('active','done');if(i<n)s.classList.add('done');if(i===n)s.classList.add('active');});}
+function reset(){shipments=[];allPairs=[];filteredPairs=[];document.getElementById('fileInput').value='';hideGeocodeProgress();goTo(1);}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE LOADING — ALL BUGS FIXED
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+
+function loadFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const sheetName=wb.SheetNames.find(n=>!/instruction/i.test(n))||wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+
+      // Find header row
+      let headerIdx=-1;
+      for(let r=0;r<Math.min(aoa.length,10);r++){
+        const joined=aoa[r].map(v=>String(v)).join('|').toLowerCase();
+        if(joined.includes('origin')&&(joined.includes('dest')||joined.includes('city'))){headerIdx=r;break;}
+      }
+      if(headerIdx===-1){toast('⚠️ Could not find header row.');return;}
+
+      const headers=aoa[headerIdx].map(h=>String(h).trim());
+      const norm=s=>String(s).toLowerCase().replace(/[^a-z]/g,'');
+      // Robust shipment ID parser — preserves leading zeros, handles numeric
+      // floats from Excel (10001.0 → "10001"), and catches scientific notation
+      const parseShipmentId = v => {
+        if(v===null||v===undefined||v==='') return '';
+        // If it's a number (Excel stored it as numeric), format without decimals
+        if(typeof v === 'number') {
+          // Guard against scientific notation on very large numbers
+          if(!isFinite(v)) return String(v);
+          // If it's a whole number, return as integer string (no trailing .0)
+          return Number.isInteger(v) ? String(v) : String(Math.round(v));
+        }
+        // String — trim and return as-is (preserves leading zeros, dashes, etc.)
+        return String(v).trim();
+      };
+
+      const findCol=(...terms)=>{const idx=headers.findIndex(h=>terms.some(t=>norm(h)===t||norm(h).startsWith(t)||norm(h).includes(t)));return idx>=0?idx:null;};
+
+      // findCol checks: norm(header)===term OR norm(header).startsWith(term) OR norm(header).includes(term)
+      // 'Shipment #' normalizes to 'shipment' — must be first term for startsWith to catch 'shipmentno' etc.
+      const colShipment  =findCol('shipment','shipmentno','shipmentnumber','shipmenthash','shipmentid','shpno','loadnum','loadnumber','orderno','orderid','pronumber','pronum','bolnumber','bol');
+      const colProdDate  =findCol('productiondate','proddate','production','mfgdate','manufacturedate','builddate');
+      const colDate      =findCol('shipdate','shipdt','shipday');
+      const colOrigCity  =findCol('origincity','origcity','origincit','pickupcity','pupcity');
+      const colOrigState =findCol('originstate','origstate','originst','origst','pickupstate','pupstate');
+      const colDestCity  =findCol('destcity','destinationcity','delivcity','delivercity','dlvcity');
+      const colDestState =findCol('deststate','destinationstate','delivstate','deliverstate','dlvstate');
+      const colEquip     =findCol('equipmenttype','equiptype','equipment','equip','trailer');
+      const colNotes     =findCol('notes','comment','remarks','note');
+
+      if(colOrigCity===null||colDestCity===null){toast('⚠️ Could not map Origin City / Dest City columns.');return;}
+
+      const SKIP=new Set(['required','optional','example','sample','n/a','na','origincity','destcity','city','']);
+
+      shipments=aoa.slice(headerIdx+1)
+        .map(row=>({
+          shipment:    colShipment!=null  ? parseShipmentId(row[colShipment])     : '',
+          prodDate:    colProdDate!=null  ? parseDate(row[colProdDate])           : null,
+          date:        colDate!=null      ? parseDate(row[colDate])               : null,
+          originCity:  colOrigCity!=null  ? String(row[colOrigCity]||'').trim()  : '',
+          originState: colOrigState!=null ? String(row[colOrigState]||'').trim() : '',
+          destCity:    colDestCity!=null  ? String(row[colDestCity]||'').trim()  : '',
+          destState:   colDestState!=null ? String(row[colDestState]||'').trim() : '',
+          equipment:   colEquip!=null     ? String(row[colEquip]||'').trim()     : '',
+          notes:       colNotes!=null     ? String(row[colNotes]||'').trim()     : '',
+        }))
+        .filter(r=>r.originCity&&r.destCity&&!SKIP.has(r.originCity.toLowerCase())&&!SKIP.has(r.destCity.toLowerCase()))
+        .map((r,i)=>({...r,shipment:r.shipment||`SHP-${String(i+1).padStart(5,'0')}`}));
+
+      if(!shipments.length){toast('⚠️ No valid shipment rows found.');return;}
+
+      // Count UNIQUE unknown city keys (not rows) for accurate progress tracking
+      const unknownCityKeys = new Set();
+      for(const s of shipments){
+        if(s.originCity&&s.originState&&!getCoordsLocal(s.originCity,s.originState))
+          unknownCityKeys.add(normCity(s.originCity,s.originState));
+        if(s.destCity&&s.destState&&!getCoordsLocal(s.destCity,s.destState))
+          unknownCityKeys.add(normCity(s.destCity,s.destState));
+      }
+      const uniqueUnknownCount = unknownCityKeys.size;
+
+      renderReviewTable();
+      goTo(2);
+
+      if(uniqueUnknownCount > 0){
+        showGeocodeProgress(0, uniqueUnknownCount);
+        // Geocode in background via Nominatim API
+        geocodeAllUnknown((done, total) => {
+          showGeocodeProgress(done, total);
+          if(done >= total){
+            hideGeocodeProgress();
+            renderReviewTable();
+            const stillUnknown = shipments.filter(s=>
+              !getCoords(s.originCity,s.originState)||!getCoords(s.destCity,s.destState)
+            ).length;
+            toast(stillUnknown > 0
+              ? `✓ Loaded ${shipments.length} shipments — ${stillUnknown} cities still unresolved (see report)`
+              : `✓ Loaded ${shipments.length} shipments — all cities resolved`);
+          }
+        }).then(()=>{ hideGeocodeProgress(); renderReviewTable(); });
+      } else {
+        toast(`✓ Loaded ${shipments.length} shipments — all cities resolved`);
+      }
+    }catch(err){toast('Error reading file: '+err.message);console.error(err);}
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── Geocode progress banner ──────────────────────────────────────
+function showGeocodeProgress(done, total){
+  let el = document.getElementById('geocodeBanner');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'geocodeBanner';
+    el.style.cssText = `
+      position:fixed;top:64px;left:0;right:0;z-index:200;
+      background:var(--navy);color:var(--white);
+      display:flex;align-items:center;gap:16px;
+      padding:12px 28px;font-size:13px;font-weight:500;
+      border-bottom:3px solid var(--clayton-blue);
+      box-shadow:0 2px 12px rgba(2,45,77,.2);
+    `;
+    document.body.appendChild(el);
+  }
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  el.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clayton-blue)" stroke-width="2.5" style="flex-shrink:0;animation:spin 1s linear infinite">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+    <span style="color:var(--sky-blue)">Looking up coordinates</span>
+    <span>${done} of ${total} cities geocoded via OpenStreetMap…</span>
+    <div style="flex:1;background:rgba(255,255,255,.1);border-radius:4px;height:6px;overflow:hidden">
+      <div style="height:100%;background:var(--clayton-blue);border-radius:4px;width:${pct}%;transition:width .4s"></div>
+    </div>
+    <span style="color:var(--sky-blue);min-width:36px;text-align:right">${pct}%</span>
+  `;
+}
+function hideGeocodeProgress(){
+  const el = document.getElementById('geocodeBanner');
+  if(el) el.remove();
+}
+// CSS spin animation (injected once)
+(()=>{const s=document.createElement('style');s.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(s);})();
+
+function parseDate(v){if(!v)return null;if(v instanceof Date)return isNaN(v)?null:v;const d=new Date(v);return isNaN(d)?null:d;}
+function fmtDate(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
+
+// ═══════════════════════════════════════════════════════════════════
+// REVIEW TABLE
+// ═══════════════════════════════════════════════════════════════════
+function renderReviewTable(){
+  const states=[...new Set(shipments.map(s=>s.originState).filter(Boolean))];
+  const equips=[...new Set(shipments.map(s=>s.equipment).filter(Boolean))];
+  // A city is "unknown" only if geocoding has completed (cache has null) — not if it's still pending
+  // Count unique city keys that failed geocoding (not row count)
+  const unresolvedKeys = new Set();
+  const pendingKeys    = new Set();
+  for(const s of shipments){
+    for(const [city,state] of [[s.originCity,s.originState],[s.destCity,s.destState]]){
+      if(!city||!state) continue;
+      const ok = getCoords(city,state);
+      const key = normCity(city,state);
+      if(!ok){
+        if(geocodeCache[key]===undefined) pendingKeys.add(key);
+        else                              unresolvedKeys.add(key);
+      }
+    }
+  }
+  const unknowns = unresolvedKeys.size;
+  const geocoding = document.getElementById('geocodeBanner') !== null;
+  document.getElementById('reviewStats').innerHTML=`
+    <div class="stat"><div class="stat-num" style="color:var(--clayton-blue)">${shipments.length}</div><div class="stat-lbl">Shipments</div></div>
+    <div class="stat"><div class="stat-num">${states.length}</div><div class="stat-lbl">Origin States</div></div>
+    <div class="stat"><div class="stat-num">${equips.length||'—'}</div><div class="stat-lbl">Equip Types</div></div>
+    <div class="stat">
+      <div class="stat-num" style="color:${geocoding?'var(--clayton-blue)':unknowns>0?'#C0392B':'var(--success-dk)'}">
+        ${geocoding?'…':unknowns}
+      </div>
+      <div class="stat-lbl">${geocoding?'Geocoding…':'Unresolved Cities'}</div>
+    </div>
+  `;
+  document.getElementById('tableHead').innerHTML='<tr>'+['Shipment #','Production Date','Ship Date','Origin','Destination','Equipment','Notes'].map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  renderFilteredTable(shipments);
+}
+
+function renderFilteredTable(rows){
+  document.getElementById('tableBody').innerHTML=rows.map(s=>{
+    const origOk  = getCoords(s.originCity,s.originState);
+    const destOk  = getCoords(s.destCity,s.destState);
+    // Pending = not in cache yet (still being looked up)
+    const origPending = !origOk && geocodeCache[normCity(s.originCity,s.originState)] === undefined;
+    const destPending = !destOk && geocodeCache[normCity(s.destCity,s.destState)] === undefined;
+    const origIcon = origOk ? '' : origPending ? '<span title="Looking up…" style="color:var(--clayton-blue)">⏳ </span>' : '<span title="City not found — will be excluded from matching" style="color:#C0392B">⚠️ </span>';
+    const destIcon = destOk ? '' : destPending ? '<span title="Looking up…" style="color:var(--clayton-blue)">⏳ </span>' : '<span title="City not found — will be excluded from matching" style="color:#C0392B">⚠️ </span>';
+    return `<tr>
+      <td><span class="tag tag-blue">${s.shipment}</span></td>
+      <td style="color:var(--text-muted)">${fmtDate(s.prodDate)}</td>
+      <td style="color:var(--text-muted)">${fmtDate(s.date)}</td>
+      <td>${origIcon}<strong>${s.originCity}</strong>${s.originState?', '+s.originState:''}</td>
+      <td>${destIcon}<strong>${s.destCity}</strong>${s.destState?', '+s.destState:''}</td>
+      <td>${s.equipment?`<span class="tag tag-navy">${s.equipment}</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('rowCount').textContent=`${rows.length} of ${shipments.length} rows`;
+}
+
+function filterTable(){
+  const q=document.getElementById('tableSearch').value.toLowerCase();
+  renderFilteredTable(q?shipments.filter(s=>[s.shipment,s.originCity,s.originState,s.destCity,s.destState].some(v=>v.toLowerCase().includes(q))):shipments);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// WEIGHTS
+// ═══════════════════════════════════════════════════════════════════
+function syncWeights(){
+  const w1=+document.getElementById('w1').value,w2=+document.getElementById('w2').value,w3=+document.getElementById('w3').value;
+  document.getElementById('w1v').textContent=w1+'%';
+  document.getElementById('w2v').textContent=w2+'%';
+  document.getElementById('w3v').textContent=w3+'%';
+  const tot=w1+w2+w3,ok=tot===100;
+  const el=document.getElementById('weightTotal');
+  el.textContent=ok?'✓ Weights total 100%':`⚠️ Weights total ${tot}% — must equal 100`;
+  el.className='weight-total '+(ok?'weight-ok':'weight-bad');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CORE MATCHING ENGINE
+// Accepts a yardHoldDays override so we can run it multiple times
+// for the Missed Opportunities analysis without changing the UI.
+// ═══════════════════════════════════════════════════════════════════
+// Yield control back to the browser — prevents UI freeze on large datasets
+function yieldToUI() { return new Promise(r => setTimeout(r, 0)); }
+
+// Show/hide a matching progress overlay
+function showMatchProgress(msg, pct) {
+  let el = document.getElementById('matchProgressBanner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'matchProgressBanner';
+    el.style.cssText = [
+      'position:fixed','top:64px','left:0','right:0','z-index:201',
+      'background:var(--navy)','color:var(--white)',
+      'display:flex','align-items:center','gap:16px',
+      'padding:12px 28px','font-size:13px','font-weight:500',
+      'border-bottom:3px solid var(--clayton-green)',
+      'box-shadow:0 2px 12px rgba(2,45,77,.25)'
+    ].join(';');
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clayton-green)"
+      stroke-width="2.5" style="flex-shrink:0;animation:spin 1s linear infinite">
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83
+               M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+    <span style="color:var(--sky-blue)">Running matcher</span>
+    <span style="flex:1">${msg}</span>
+    ${pct!=null?`
+    <div style="width:180px;background:rgba(255,255,255,.1);border-radius:4px;height:6px;overflow:hidden">
+      <div style="height:100%;background:var(--clayton-green);border-radius:4px;
+                  width:${pct}%;transition:width .3s"></div>
+    </div>
+    <span style="color:var(--sky-blue);min-width:36px;text-align:right">${pct}%</span>`:''}
+  `;
+}
+function hideMatchProgress() {
+  const el = document.getElementById('matchProgressBanner');
+  if (el) el.remove();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MATCHING MODE
+// ═══════════════════════════════════════════════════════════════════
+let currentMode = 'assign';
+
+function setMode(mode) {
+  currentMode = mode;
+  const aLbl = document.getElementById('modeAssignLabel');
+  const bLbl = document.getElementById('modeAllLabel');
+  aLbl.style.borderColor = mode==='assign'?'var(--clayton-blue)':'var(--border-light)';
+  bLbl.style.borderColor = mode==='all'   ?'var(--clayton-blue)':'var(--border-light)';
+  aLbl.style.background  = mode==='assign'?'rgba(0,113,200,.06)':'white';
+  bLbl.style.background  = mode==='all'   ?'rgba(0,113,200,.06)':'white';
+  document.getElementById(mode==='assign'?'modeAssign':'modeAll').checked = true;
+  const btn = document.getElementById('runBtn');
+  if(btn) btn.textContent = mode==='all' ? 'Find All Valid Pairs →' : 'Find Best Matches →';
+}
+
+// All-Valid-Pairs: every (A,B) combination that passes filters, no exclusivity
+async function findAllValidPairs(cfg, cachedDist, onProgress) {
+  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
+  const pairs=[];
+  const CHUNK=50;
+
+  const effective = s=>{
+    if(s.prodDate){const e=new Date(s.prodDate);e.setDate(e.getDate()+yardHold);if(s.date)return new Date(Math.max(e,s.date));return e;}
+    return s.date||null;
+  };
+
+  const sorted=[...shipments].map(s=>({...s,effectiveDate:effective(s)}))
+    .filter(s=>s.originCity&&s.destCity&&s.originState&&s.destState);
+
+  const scoreOne=(A,B)=>{
+    if(equipM==='strict'&&A.equipment&&B.equipment&&A.equipment!==B.equipment)return null;
+    let dateDiff=null;
+    if(A.effectiveDate&&B.effectiveDate){
+      dateDiff=(B.effectiveDate-A.effectiveDate)/86400000;
+      if(dateDiff<0||dateDiff>maxDays)return null;
+    }
+    const dh=cachedDist(A.destCity,A.destState,B.originCity,B.originState);
+    if(dh===null||dh>maxDH)return null;
+    const ret=cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+    if(ret===null||ret>maxRet)return null;
+    const bh=cachedDist(B.originCity,B.originState,B.destCity,B.destState);
+    if(bh!==null&&(bh<minBackhaul||bh>maxBackhaul))return null;
+    // Guardrail 1: Same-origin filter — B's origin must be >= minOriginSep from A's origin
+    if(minOriginSep > 0){
+      const originSep = cachedDist(A.originCity,A.originState,B.originCity,B.originState);
+      if(originSep!==null && originSep < minOriginSep) return null;
+    }
+    // Guardrail 2: Net displacement — B's destination must be closer to A's origin than A's destination
+    if(requireDisplacement){
+      const distAfterA = cachedDist(A.destCity,A.destState,A.originCity,A.originState);
+      const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+      if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return null;
+    }
+    const dhS=(1-dh/maxDH)*100*(w1/100);
+    const retS=(1-ret/maxRet)*100*(w2/100);
+    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
+    return {score:Math.round(Math.max(0,dhS+retS+dateS)),dh,ret,bh,dateDiff};
+  };
+
+  for(let i=0;i<sorted.length;i++){
+    if(i%CHUNK===0){if(onProgress)onProgress(Math.round(i/sorted.length*100));await yieldToUI();}
+    const A=sorted[i];
+    for(let j=0;j<sorted.length;j++){
+      if(i===j)continue;
+      const B=sorted[j];
+      const r=scoreOne(A,B);
+      if(!r)continue;
+      pairs.push({A,B,deadheadMiles:r.dh,returnMiles:r.ret,bHaulMiles:r.bh,
+                  dateDiff:r.dateDiff,score:r.score,yardHold,multiMode:true});
+    }
+  }
+  pairs.sort((a,b)=>b.score-a.score);
+  return pairs;
+}
+
+async function runMatching(){
+  const maxDH  =+document.getElementById('maxDeadhead').value;
+  const maxRet =+document.getElementById('returnRadius').value;
+  const maxDays=+document.getElementById('maxDays').value;
+  const equipM =document.getElementById('equipMatch').value;
+  const yardHold=+document.getElementById('yardHold').value;
+  const w1=+document.getElementById('w1').value,w2=+document.getElementById('w2').value,w3=+document.getElementById('w3').value;
+  if(w1+w2+w3!==100){toast('⚠️ Weights must total 100');return;}
+
+  const minBackhaul=+document.getElementById('minBackhaul').value||0;
+  const maxBackhaul=+document.getElementById('maxBackhaul').value||99999;
+  const minOriginSep=+document.getElementById('minOriginSep').value||0;
+  const requireDisplacement=document.getElementById('requireDisplacement').value==='yes';
+  const cfg={maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul,maxBackhaul,minOriginSep,requireDisplacement};
+  const n = shipments.length;
+
+  // Disable the button while running
+  document.querySelectorAll('button').forEach(b=>b.disabled=true);
+  showMatchProgress(`Preparing ${n.toLocaleString()} shipments…`, 0);
+  await yieldToUI();
+
+  // ── PHASE 1: Pre-compute distance cache ─────────────────────────────────
+  // Build a Set of all unique city keys and pre-warm the Haversine lookup
+  // so the inner matching loops hit a JS Map (O(1)) instead of re-computing.
+  const distCache = new Map();
+  const cacheKey = (c1,s1,c2,s2) => `${c1}|${s1}|${c2}|${s2}`;
+  const cachedDist = (c1,s1,c2,s2) => {
+    const k = cacheKey(c1,s1,c2,s2);
+    if (distCache.has(k)) return distCache.get(k);
+    const v = distanceMiles(c1,s1,c2,s2);
+    distCache.set(k, v);
+    distCache.set(cacheKey(c2,s2,c1,s1), v); // symmetric
+    return v;
+  };
+  // Patch distanceMiles globally for this run so matchShipments uses cache
+  const _origDist = distanceMiles;
+  window._cachedDistFn = cachedDist;
+
+  showMatchProgress(`Computing ${n.toLocaleString()} shipment distances…`, 5);
+  await yieldToUI();
+
+  // ── PHASE 2+3: Match according to selected mode ─────────────────────────
+  let matched = new Set();
+
+  if(currentMode === 'all'){
+    // ── ALL VALID PAIRS MODE ─────────────────────────────────────────────
+    // Find every pair that meets the filters — no exclusive assignment.
+    // Each shipment can appear in multiple pairs.
+    showMatchProgress(`Finding all valid pairs (${n.toLocaleString()} shipments)…`, 10);
+    await yieldToUI();
+    const allValid = await findAllValidPairs(cfg, cachedDist, (pct) => {
+      showMatchProgress(`Scanning all pairs… ${pct}% complete`, 10 + Math.round(pct * 0.7));
+    });
+    allPairs = allValid;
+    // In all-pairs mode, "matched" tracks every shipment that appears in ANY pair
+    allPairs.forEach(p=>{matched.add(p.A.shipment);matched.add(p.B.shipment);});
+
+  } else {
+    // ── BEST ASSIGNMENT MODE (default) ───────────────────────────────────
+    // Each shipment appears in at most one pair. Optimised globally.
+    showMatchProgress(`Running greedy matcher (${n.toLocaleString()} shipments)…`, 10);
+    await yieldToUI();
+
+    const {pairs, matched: greedyMatched} = await matchShipmentsAsync(cfg, cachedDist, (pct) => {
+      showMatchProgress(`Greedy matching… ${pct}% complete`, 10 + Math.round(pct * 0.5));
+    });
+    matched = greedyMatched;
+    allPairs = [...pairs];
+
+    if (pairs.length > 1) {
+      showMatchProgress(`Optimizing ${pairs.length} pairs (swap-improvement)…`, 60);
+      await yieldToUI();
+      await swapImproveAsync(pairs, cfg, cachedDist, (pass, pct) => {
+        showMatchProgress(`Optimization pass ${pass} — ${pct}% complete`, 60 + Math.round(pct * 0.25));
+      });
+      matched.clear();
+      pairs.forEach(p=>{matched.add(p.A.shipment);matched.add(p.B.shipment);});
+      allPairs = [...pairs];
+      allPairs.sort((a,b)=>b.score-a.score);
+    }
+  }
+
+  // ── PHASE 4: Missed Opportunities scenarios ─────────────────────────────
+  showMatchProgress('Running missed opportunity scenarios…', 85);
+  await yieldToUI();
+
+  const baseHold = yardHold;
+  const scenarios = [3,4,5,7,10].filter(d=>d>baseHold);
+  analyticsData = [];
+
+  // CORRECT MISSED OPPORTUNITY MODEL:
+  // A longer yard hold means the dispatcher has more days to find a backhaul
+  // before the home MUST ship. We model this by extending maxDays by the
+  // additional hold days, while keeping effectiveDate based on actual ship dates.
+  // Example: base hold=2, extended=5 → +3 extra days → maxDays increases by 3.
+  // This correctly answers: "how many more pairs would exist if loads could
+  // wait up to X extra days for a backhaul to become available?"
+  //
+  // We do NOT change yardHold in the scenario config — that would shift
+  // effectiveDate = max(prodDate + newHold, shipDate) forward, which can
+  // REJECT previously valid pairs (where shipDate < prodDate + newHold).
+
+  for (const extHold of scenarios) {
+    const extraDays = extHold - baseHold;
+    const scenarioCfg = {...cfg, maxDays: cfg.maxDays + extraDays};
+    const res = await matchShipmentsAsync(scenarioCfg, cachedDist, null);
+    await swapImproveAsync(res.pairs, scenarioCfg, cachedDist, null);
+    analyticsData.push({
+      holdDays: extHold,
+      pairs: res.pairs,
+      newPairs: res.pairs.length - allPairs.length,
+      avgScore: res.pairs.length ? Math.round(res.pairs.reduce((a,p)=>a+p.score,0)/res.pairs.length) : 0,
+      avgDH: res.pairs.length ? Math.round(res.pairs.reduce((a,p)=>a+p.deadheadMiles,0)/res.pairs.length) : 0,
+      totalDHSaved: allPairs.length&&res.pairs.length ?
+        Math.round(allPairs.reduce((a,p)=>a+p.deadheadMiles,0)-res.pairs.reduce((a,p)=>a+p.deadheadMiles,0)) : 0,
+    });
+    await yieldToUI();
+  }
+
+  // ── Done ────────────────────────────────────────────────────────────────
+  hideMatchProgress();
+  document.querySelectorAll('button').forEach(b=>b.disabled=false);
+  document.getElementById('analyticHoldLabel').textContent = `${baseHold}-day`;
+  renderResults(matched);
+  renderAnalytics(baseHold);
+  renderUnresolvedCities();
+  // Show mode tag in results header
+  const modeTag = document.getElementById('resultModeTag');
+  if(modeTag) modeTag.textContent = currentMode==='all' ? '⊕ All Valid Pairs' : '✓ Best Assignment';
+  goTo(4);
+  switchTab('matches');
+}
+
+// Async greedy matcher — yields to UI every CHUNK_SIZE outer iterations
+async function matchShipmentsAsync(cfg, cachedDist, onProgress) {
+  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true} = cfg;
+  const pairs=[], matched=new Set();
+  const CHUNK = 50; // yield every 50 outer iterations
+
+  const effective = s => {
+    if(s.prodDate){
+      const e=new Date(s.prodDate); e.setDate(e.getDate()+yardHold);
+      if(s.date) return new Date(Math.max(e,s.date));
+      return e;
+    }
+    return s.date||null;
+  };
+
+  const sorted=[...shipments]
+    .map(s=>({...s,effectiveDate:effective(s)}))
+    .sort((a,b)=>{
+      if(!a.effectiveDate&&!b.effectiveDate)return 0;
+      if(!a.effectiveDate)return 1; if(!b.effectiveDate)return -1;
+      return a.effectiveDate-b.effectiveDate;
+    });
+
+  const scoreOne = (A,B) => {
+    if(equipM==='strict'&&A.equipment&&B.equipment&&A.equipment!==B.equipment)return null;
+    let dateDiff=null;
+    if(A.effectiveDate&&B.effectiveDate){
+      dateDiff=(B.effectiveDate-A.effectiveDate)/86400000;
+      if(dateDiff<0||dateDiff>maxDays)return null;
+    }
+    const dh=cachedDist(A.destCity,A.destState,B.originCity,B.originState);
+    if(dh===null||dh>maxDH)return null;
+    const ret=cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+    if(ret===null||ret>maxRet)return null;
+    const bh=cachedDist(B.originCity,B.originState,B.destCity,B.destState);
+    if(bh!==null&&(bh<minBackhaul||bh>maxBackhaul))return null;
+    // Guardrail 1: Same-origin filter — B's origin must be >= minOriginSep from A's origin
+    if(minOriginSep > 0){
+      const originSep = cachedDist(A.originCity,A.originState,B.originCity,B.originState);
+      if(originSep!==null && originSep < minOriginSep) return null;
+    }
+    // Guardrail 2: Net displacement — B's destination must be closer to A's origin than A's destination
+    if(requireDisplacement){
+      const distAfterA = cachedDist(A.destCity,A.destState,A.originCity,A.originState);
+      const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+      if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return null;
+    }
+    const dhS=(1-dh/maxDH)*100*(w1/100);
+    const retS=(1-ret/maxRet)*100*(w2/100);
+    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
+    return {score:Math.round(Math.max(0,dhS+retS+dateS)),dh,ret,bh,dateDiff};
+  };
+
+  for(let i=0;i<sorted.length;i++){
+    // Yield every CHUNK iterations to keep UI responsive
+    if(i%CHUNK===0){
+      if(onProgress) onProgress(Math.round(i/sorted.length*100));
+      await yieldToUI();
+    }
+    const A=sorted[i];
+    if(matched.has(A.shipment))continue;
+    if(!A.destCity||!A.originCity||!A.originState||!A.destState)continue;
+    let best=null, bestR=null;
+    for(let j=0;j<sorted.length;j++){
+      if(i===j)continue;
+      const B=sorted[j];
+      if(matched.has(B.shipment))continue;
+      if(!B.originCity||!B.destCity||!B.originState||!B.destState)continue;
+      const r=scoreOne(A,B);
+      if(!r)continue;
+      if(!best||r.score>best)best=r.score,bestR={A,B,...r};
+    }
+    if(bestR){
+      pairs.push({A:bestR.A,B:bestR.B,deadheadMiles:bestR.dh,returnMiles:bestR.ret,
+                  bHaulMiles:bestR.bh,dateDiff:bestR.dateDiff,score:bestR.score,yardHold});
+      matched.add(bestR.A.shipment);matched.add(bestR.B.shipment);
+    }
+  }
+  pairs.sort((a,b)=>b.score-a.score);
+  return {pairs,matched};
+}
+
+// Async swap-improvement — yields every CHUNK pair comparisons
+async function swapImproveAsync(pairs, cfg, cachedDist, onProgress) {
+  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
+  const MAX_PASSES=10, CHUNK=500;
+  let improved=true, passCount=0;
+
+  const scoreOne=(A,B)=>{
+    if(!A||!B)return -1;
+    if(equipM==='strict'&&A.equipment&&B.equipment&&A.equipment!==B.equipment)return -1;
+    let dateDiff=null;
+    if(A.effectiveDate&&B.effectiveDate){
+      dateDiff=(B.effectiveDate-A.effectiveDate)/86400000;
+      if(dateDiff<0||dateDiff>maxDays)return -1;
+    }
+    const dh=cachedDist(A.destCity,A.destState,B.originCity,B.originState);
+    if(dh===null||dh>maxDH)return -1;
+    const ret=cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+    if(ret===null||ret>maxRet)return -1;
+    const bh=cachedDist(B.originCity,B.originState,B.destCity,B.destState);
+    if(bh!==null&&(bh<minBackhaul||bh>maxBackhaul))return -1;
+    if(minOriginSep > 0){
+      const originSep = cachedDist(A.originCity,A.originState,B.originCity,B.originState);
+      if(originSep!==null && originSep < minOriginSep) return -1;
+    }
+    if(requireDisplacement){
+      const distAfterA = cachedDist(A.destCity,A.destState,A.originCity,A.originState);
+      const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
+      if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return -1;
+    }
+    const dhS=(1-dh/maxDH)*100*(w1/100);
+    const retS=(1-ret/maxRet)*100*(w2/100);
+    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
+    return Math.round(Math.max(0,dhS+retS+dateS));
+  };
+
+  while(improved && passCount<MAX_PASSES){
+    improved=false; passCount++;
+    let ops=0;
+    for(let i=0;i<pairs.length;i++){
+      for(let j=i+1;j<pairs.length;j++){
+        ops++;
+        if(ops%CHUNK===0){ if(onProgress)onProgress(passCount,Math.round(ops/(pairs.length*(pairs.length-1)/2)*100)); await yieldToUI(); }
+        const pi=pairs[i],pj=pairs[j];
+        const cur=pi.score+pj.score;
+        const s1a=scoreOne(pi.A,pj.B),s1b=scoreOne(pj.A,pi.B);
+        if(s1a>=0&&s1b>=0&&s1a+s1b>cur){
+          const mk=(A,B)=>({A,B,
+            deadheadMiles:cachedDist(A.destCity,A.destState,B.originCity,B.originState),
+            returnMiles:cachedDist(B.destCity,B.destState,A.originCity,A.originState),
+            bHaulMiles:cachedDist(B.originCity,B.originState,B.destCity,B.destState),
+            dateDiff:(A.effectiveDate&&B.effectiveDate)?(B.effectiveDate-A.effectiveDate)/86400000:null,
+            score:0,yardHold});
+          const p1=mk(pi.A,pj.B); p1.score=s1a;
+          const p2=mk(pj.A,pi.B); p2.score=s1b;
+          pairs[i]=p1; pairs[j]=p2; improved=true; continue;
+        }
+        const s2a=scoreOne(pj.A,pi.B),s2b=scoreOne(pi.A,pj.B);
+        if(s2a>=0&&s2b>=0&&s2a+s2b>cur){
+          const mk=(A,B)=>({A,B,
+            deadheadMiles:cachedDist(A.destCity,A.destState,B.originCity,B.originState),
+            returnMiles:cachedDist(B.destCity,B.destState,A.originCity,A.originState),
+            bHaulMiles:cachedDist(B.originCity,B.originState,B.destCity,B.destState),
+            dateDiff:(A.effectiveDate&&B.effectiveDate)?(B.effectiveDate-A.effectiveDate)/86400000:null,
+            score:0,yardHold});
+          const p1=mk(pj.A,pi.B); p1.score=s2a;
+          const p2=mk(pi.A,pj.B); p2.score=s2b;
+          pairs[i]=p1; pairs[j]=p2; improved=true;
+        }
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════
+function switchTab(tab){
+  ['matches','analytics','unresolved'].forEach(t=>{
+    document.getElementById(`tabpanel-${t}`).style.display = t===tab?'block':'none';
+    const btn=document.getElementById(`tab-${t}`);
+    if(t===tab){
+      btn.style.color='var(--clayton-blue)';
+      btn.style.borderBottomColor='var(--clayton-blue)';
+      btn.style.fontWeight='700';
+    } else {
+      btn.style.color='var(--text-muted)';
+      btn.style.borderBottomColor='transparent';
+      btn.style.fontWeight='600';
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER RESULTS — MATCHES TAB
+// ═══════════════════════════════════════════════════════════════════
+// ── PAIR CLASSIFICATION ──────────────────────────────────────────────────────
+// Classifies each matched pair into one of three tiers based on efficiency:
+//   LOOP      — high score, meaningful haul, truck ends near origin (<= 150mi)
+//   BACKHAUL  — truck ends closer to origin than after outbound leg alone
+//   MOVE      — matched but net displacement is minimal or not calculable
+function classifyPair(p) {
+  const distAfterA = distanceMiles(p.A.destCity, p.A.destState, p.A.originCity, p.A.originState);
+  const distAfterB = distanceMiles(p.B.destCity, p.B.destState, p.A.originCity, p.A.originState);
+
+  // LOOP: truck ends up close to home AND scored well AND backhaul is a real haul
+  if(distAfterB !== null && distAfterB <= 150 && p.score >= 65 && (p.bHaulMiles || 0) >= 75) {
+    return 'loop';
+  }
+  // BACKHAUL: truck is measurably closer to origin after completing B vs after A alone
+  if(distAfterA !== null && distAfterB !== null && distAfterB < distAfterA) {
+    return 'backhaul';
+  }
+  // MOVE: matched but doesn't meaningfully move toward home
+  return 'move';
+}
+
+function renderResults(matched){
+  const unmatched=shipments.filter(s=>!matched.has(s.shipment));
+  const avgDH=allPairs.length?Math.round(allPairs.reduce((s,p)=>s+p.deadheadMiles,0)/allPairs.length):0;
+  const pctPaired=shipments.length?Math.round((matched.size/shipments.length)*100):0;
+  const isAllMode = currentMode==='all';
+
+  // Classify pairs into tiers
+  const tierCounts = {loop:0, backhaul:0, move:0};
+  allPairs.forEach(p=>{ p._tier = classifyPair(p); tierCounts[p._tier]++; });
+
+  const pairedLabel   = isAllMode ? 'Shipments in ≥1 Pair' : 'Loads Paired';
+  const pairsLabel    = isAllMode ? 'Valid Pairs'           : 'Pairs Found';
+  const rateLabel     = isAllMode ? 'Coverage'              : 'Match Rate';
+
+  document.getElementById('resultStats').innerHTML=`
+    <div class="stat"><div class="stat-num" style="color:var(--success-dk)">${allPairs.length}</div><div class="stat-lbl">${pairsLabel}</div></div>
+    <div class="stat"><div class="stat-num" style="color:var(--clayton-blue)">${matched.size}</div><div class="stat-lbl">${pairedLabel}</div></div>
+    <div class="stat"><div class="stat-num">${pctPaired}%</div><div class="stat-lbl">${rateLabel}</div></div>
+    <div class="stat"><div class="stat-num">${unmatched.length}</div><div class="stat-lbl">Traditional Moves</div></div>
+    <div class="stat"><div class="stat-num">${avgDH}</div><div class="stat-lbl">Avg Deadhead mi</div></div>
+  `;
+  // Tier summary bar
+  const tierBar = document.getElementById('tierSummary') || (() => {
+    const el=document.createElement('div'); el.id='tierSummary';
+    document.getElementById('resultStats').after(el); return el;
+  })();
+  tierBar.innerHTML=`
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center">
+      <span style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">Planning Tiers:</span>
+      <span style="background:rgba(153,191,78,.15);border:1px solid rgba(153,191,78,.4);color:var(--success-dk);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">
+        🔁 ${tierCounts.loop} Loop${tierCounts.loop!==1?'s':''}
+      </span>
+      <span style="background:rgba(0,113,200,.1);border:1px solid rgba(0,113,200,.3);color:var(--clayton-blue);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">
+        ↩ ${tierCounts.backhaul} Backhaul${tierCounts.backhaul!==1?'s':''}
+      </span>
+      <span style="background:rgba(100,100,100,.08);border:1px solid #ccc;color:var(--text-muted);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">
+        → ${tierCounts.move} Other Match${tierCounts.move!==1?'es':''}
+      </span>
+      <span style="background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);color:#C0392B;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700">
+        ⬡ ${unmatched.length} Traditional Move${unmatched.length!==1?'s':''}
+      </span>
+    </div>
+  `;
+
+  // Show/hide all-pairs explanation banner
+  const existingBanner = document.getElementById('allPairesModeBanner');
+  if(existingBanner) existingBanner.remove();
+  if(isAllMode){
+    const banner=document.createElement('div');
+    banner.id='allPairesModeBanner';
+    banner.style.cssText='background:rgba(0,113,200,.07);border:1px solid rgba(0,113,200,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--navy);line-height:1.6';
+    banner.innerHTML='<strong>All Valid Pairs mode:</strong> Every shipment pairing that meets your parameters is shown. A shipment may appear in multiple rows — one per potential backhaul partner. Use this to explore options; dispatchers can choose which to book.';
+    document.getElementById('pairList').before(banner);
+  }
+  filteredPairs=[...allPairs];
+  renderPairCards();
+  if(unmatched.length){
+    document.getElementById('unmatchedSection').style.display='block';
+    document.getElementById('unmatchedBody').innerHTML=unmatched.map(s=>`<tr>
+      <td><span class="tag tag-blue">${s.shipment}</span></td>
+      <td style="color:var(--text-muted)">${fmtDate(s.prodDate)}</td>
+      <td style="color:var(--text-muted)">${fmtDate(s.date)}</td>
+      <td>${s.originCity}, ${s.originState}</td><td>${s.destCity}, ${s.destState}</td>
+      <td>${s.equipment||'—'}</td>
+      <td style="color:var(--text-muted)">No match within parameters</td>
+    </tr>`).join('');
+  } else {document.getElementById('unmatchedSection').style.display='none';}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER ANALYTICS — MISSED OPPORTUNITIES TAB
+// ═══════════════════════════════════════════════════════════════════
+function renderAnalytics(baseHold){
+  const el=document.getElementById('analyticsContent');
+  if(!analyticsData.length){
+    el.innerHTML=`<div class="empty"><div class="icon">✅</div><h3>No additional scenarios</h3><p>Your yard hold window is already at or beyond all comparison thresholds.</p></div>`;
+    return;
+  }
+
+  const baseCount=allPairs.length;
+  const baseAvgDH=allPairs.length?Math.round(allPairs.reduce((a,p)=>a+p.deadheadMiles,0)/allPairs.length):0;
+
+  // Summary comparison table
+  const tableRows=analyticsData.map(s=>{
+    const addedPairs=s.pairs.length-baseCount;
+    const dhChange=baseAvgDH-s.avgDH;
+    const addedColor=addedPairs>0?'var(--success-dk)':'var(--text-muted)';
+    const dhColor=dhChange>0?'var(--success-dk)':dhChange<0?'#C0392B':'var(--text-muted)';
+    return `<tr>
+      <td style="font-weight:700;color:var(--navy)">${s.holdDays} days</td>
+      <td style="font-weight:700;color:${addedColor}">${s.pairs.length} <span style="font-size:11px;color:${addedColor}">(+${Math.max(0,addedPairs)})</span></td>
+      <td>${s.pairs.length>0?Math.round(s.pairs.length*2/shipments.length*100):0}%</td>
+      <td style="color:${dhColor}">${s.avgDH} mi ${dhChange>0?'<span style="font-size:11px">(−'+dhChange+' avg)</span>':''}</td>
+      <td style="font-weight:600;color:${addedColor}">${addedPairs>0?'+'+addedPairs+' additional pairs':'No change'}</td>
+    </tr>`;
+  }).join('');
+
+  // Bar chart of pairs by scenario (CSS-based)
+  const maxPairs=Math.max(baseCount,...analyticsData.map(s=>s.pairs.length),1);
+  const barChart=[
+    {label:`${baseHold}d (current)`,count:baseCount,color:'var(--clayton-blue)',current:true},
+    ...analyticsData.map(s=>({label:`${s.holdDays}d`,count:s.pairs.length,color:'var(--clayton-green)',current:false}))
+  ].map(b=>`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div style="width:70px;font-size:12px;font-weight:${b.current?700:500};color:${b.current?'var(--navy)':'var(--text-muted)'};text-align:right;flex-shrink:0">${b.label}</div>
+      <div style="flex:1;background:var(--sky-40);border-radius:4px;height:28px;position:relative;overflow:hidden">
+        <div style="position:absolute;left:0;top:0;bottom:0;background:${b.color};border-radius:4px;width:${Math.round(b.count/maxPairs*100)}%;transition:width .5s;opacity:${b.current?1:.85}"></div>
+        <div style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:${b.count/maxPairs>.25?'white':'var(--navy)'}">${b.count} pairs</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Highlight the biggest opportunity
+  const biggestGain=analyticsData.reduce((best,s)=>s.pairs.length>best.pairs.length?s:best,analyticsData[0]);
+  const gainedPairs=biggestGain.pairs.length-baseCount;
+
+  el.innerHTML=`
+    ${gainedPairs>0?`
+    <div style="background:rgba(153,191,78,.1);border:1px solid rgba(153,191,78,.35);border-left:4px solid var(--clayton-green);border-radius:8px;padding:16px 20px;margin-bottom:22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="font-size:32px;font-weight:700;color:var(--success-dk)">+${gainedPairs}</div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--navy)">Additional backhaul pairs available at a ${biggestGain.holdDays}-day yard hold</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-top:2px">Average deadhead would drop from ${baseAvgDH} mi to ${biggestGain.avgDH} mi per pair</div>
+      </div>
+    </div>` : ''}
+
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title">Pairs Found by Yard Hold Window</div>
+      ${barChart}
+    </div>
+
+    <div class="card">
+      <div class="card-title">Scenario Comparison</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Yard Hold</th><th>Total Pairs</th><th>Match Rate</th><th>Avg Deadhead</th><th>vs Current Baseline</th>
+          </tr></thead>
+          <tbody>
+            <tr style="background:rgba(0,113,200,.06)">
+              <td style="font-weight:700;color:var(--clayton-blue)">${baseHold} days <span style="font-size:10px;background:var(--clayton-blue);color:white;padding:1px 6px;border-radius:3px;margin-left:4px">CURRENT</span></td>
+              <td style="font-weight:700">${baseCount}</td>
+              <td>${shipments.length?Math.round(baseCount*2/shipments.length*100):0}%</td>
+              <td>${baseAvgDH} mi</td>
+              <td style="color:var(--text-muted)">Baseline</td>
+            </tr>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${gainedPairs>0?`
+    <div class="card" style="background:var(--warm-40);border-color:#D6CCC0">
+      <div class="card-title" style="color:var(--olive)">💡 Business Case Talking Points</div>
+      <div style="font-size:13px;color:var(--olive);line-height:1.9">
+        ${analyticsData.filter(s=>s.pairs.length>baseCount).map(s=>`
+        <div style="display:flex;gap:10px;margin-bottom:6px">
+          <span style="color:var(--success-dk);font-weight:700;flex-shrink:0">→</span>
+          <span>Extending the yard hold from <strong>${baseHold} to ${s.holdDays} days</strong> unlocks
+          <strong style="color:var(--success-dk)">${s.pairs.length-baseCount} additional backhaul pairs</strong>,
+          improving the match rate from ${shipments.length?Math.round(baseCount*2/shipments.length*100):0}% to
+          ${Math.round(s.pairs.length*2/shipments.length*100)}% and reducing average deadhead
+          from ${baseAvgDH} to ${s.avgDH} miles per trip.</span>
+        </div>`).join('')}
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #D6CCC0;font-size:12px;color:var(--text-muted)">
+          Note: Deadhead savings assume industry average cost of $2.50–$3.50/mile for empty miles.
+          At 150 mi avg deadhead saved per additional pair, each unlocked backhaul is worth approximately
+          $375–$525 in reduced empty-mile cost.
+        </div>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+function renderPairCards(){
+  const list=document.getElementById('pairList');
+  if(!filteredPairs.length){
+    list.innerHTML=`<div class="empty"><div class="icon">🔍</div><h3>No matches found</h3><p>Try increasing deadhead miles or return-to-origin radius, or expanding your date window.</p></div>`;
+    return;
+  }
+
+  // Group by tier in priority order
+  const tierConfig = {
+    loop:     { label:'🔁 Loops', sub:'Truck ends within 150 mi of origin — highest value, schedule first', color:'var(--success-dk)',   bg:'rgba(153,191,78,.07)',  border:'rgba(153,191,78,.3)'  },
+    backhaul: { label:'↩ Backhauls', sub:'Truck moves closer to origin — schedule second', color:'var(--clayton-blue)', bg:'rgba(0,113,200,.05)',   border:'rgba(0,113,200,.2)'  },
+    move:     { label:'→ Other Matches', sub:'Valid pairing but minimal homeward progress — consider before deadheading', color:'var(--text-muted)',   bg:'rgba(100,100,100,.04)', border:'#ddd'                },
+  };
+
+  const grouped = {loop:[], backhaul:[], move:[]};
+  filteredPairs.forEach((p,idx)=>{ grouped[p._tier||'move'].push({p,idx}); });
+
+  let html = '';
+  for(const tier of ['loop','backhaul','move']){
+    const items = grouped[tier];
+    if(!items.length) continue;
+    const tc = tierConfig[tier];
+    html += `
+      <div style="margin-bottom:8px;margin-top:${tier==='loop'?'0':'24px'}">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px">
+          <span style="font-size:15px;font-weight:800;color:${tc.color}">${tc.label}</span>
+          <span style="font-size:12px;color:var(--text-muted)">${items.length} pair${items.length!==1?'s':''} · ${tc.sub}</span>
+        </div>
+        <div style="height:2px;background:${tc.border};border-radius:1px;margin-bottom:14px"></div>
+      </div>
+    `;
+    html += items.map(({p,idx})=>{
+    const g=p.score>=80
+      ?{color:'var(--success-dk)',   fill:'var(--clayton-green)',label:'Excellent',cls:'grade-excellent'}
+      :p.score>=55
+      ?{color:'var(--clayton-blue)', fill:'var(--clayton-blue)', label:'Good',     cls:'grade-good'}
+      :{color:'var(--text-muted)',   fill:'var(--sky-blue)',     label:'Fair',     cls:'grade-fair'};
+    const prodA = p.A.prodDate ? `<span style="color:var(--text-muted);font-size:11px"> · Produced ${fmtDate(p.A.prodDate)}</span>` : '';
+    const prodB = p.B.prodDate ? `<span style="color:var(--text-muted);font-size:11px"> · Produced ${fmtDate(p.B.prodDate)}</span>` : '';
+    // Tier badge config for the card
+    const tierBadge = p._tier==='loop'
+      ? `<span style="background:rgba(153,191,78,.15);color:var(--success-dk);border:1px solid rgba(153,191,78,.4);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">🔁 LOOP</span>`
+      : p._tier==='backhaul'
+      ? `<span style="background:rgba(0,113,200,.1);color:var(--clayton-blue);border:1px solid rgba(0,113,200,.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">↩ BACKHAUL</span>`
+      : `<span style="background:rgba(100,100,100,.08);color:var(--text-muted);border:1px solid #ccc;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">→ MATCH</span>`;
+
+    // Net displacement info
+    const distAfterA = distanceMiles(p.A.destCity,p.A.destState,p.A.originCity,p.A.originState);
+    const distAfterB = distanceMiles(p.B.destCity,p.B.destState,p.A.originCity,p.A.originState);
+    const dispChip = (distAfterA&&distAfterB)
+      ? `<div class="meta-chip" style="color:${distAfterB<distAfterA?'var(--success-dk)':'#C0392B'}">
+           Distance to origin after B:<strong>${distAfterB} mi</strong>
+           <span style="font-size:10px">(was ${distAfterA} mi after outbound)</span>
+         </div>`
+      : '';
+
+    return `<div class="pair-card ${g.cls}">
+      <div class="pair-header">
+        <div>
+          <div class="pair-id">
+            ${p.multiMode?'Opportunity':'Match'} ${idx+1}${tierBadge}
+            ${p.multiMode?`<span style="font-size:10px;background:rgba(0,113,200,.12);color:var(--clayton-blue);padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:500">ALL PAIRS</span>`:''}
+          </div>
+          <div class="pair-ships">${p.A.shipment} → ${p.B.shipment}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="score-wrap">
+            <div class="score-track"><div class="score-fill" style="width:${p.score}%;background:${g.fill}"></div></div>
+            <span class="score-num" style="color:${g.color}">${p.score}</span>
+          </div>
+          <div class="score-label" style="color:${g.color}">${g.label}</div>
+        </div>
+      </div>
+      <div class="pair-lanes">
+        <div class="lane-box">
+          <div class="lane-type" style="color:var(--clayton-blue)">Outbound · ${p.A.shipment}</div>
+          <div class="lane-route">${p.A.originCity}, ${p.A.originState} → ${p.A.destCity}, ${p.A.destState}</div>
+          <div class="lane-meta">${fmtDate(p.A.effectiveDate||p.A.date)}${prodA}${p.A.equipment?' · '+p.A.equipment:''}</div>
+        </div>
+        <div class="dh-bridge"><div class="dh-line"></div><div class="dh-miles">${p.deadheadMiles} mi</div><div class="dh-label">deadhead</div><div class="dh-line"></div></div>
+        <div class="lane-box backhaul">
+          <div class="lane-type" style="color:var(--success-dk)">${p._tier==='loop'?'Loop Return':'Backhaul'} · ${p.B.shipment}</div>
+          <div class="lane-route">${p.B.originCity}, ${p.B.originState} → ${p.B.destCity}, ${p.B.destState}</div>
+          <div class="lane-meta">${fmtDate(p.B.effectiveDate||p.B.date)}${prodB}${p.B.equipment?' · '+p.B.equipment:''}</div>
+        </div>
+      </div>
+      <div class="pair-meta">
+        <div class="meta-chip">Deadhead:<strong>${p.deadheadMiles} mi</strong></div>
+        <div class="meta-chip">Return to origin:<strong>${p.returnMiles} mi</strong></div>
+        ${p.bHaulMiles?`<div class="meta-chip">Backhaul length:<strong>${p.bHaulMiles} mi</strong></div>`:''}
+        ${p.dateDiff!==null?`<div class="meta-chip">Days apart:<strong>${Math.round(p.dateDiff)}</strong></div>`:''}
+        ${p.A.equipment&&p.B.equipment?`<div class="meta-chip">Equipment:<strong>${p.A.equipment===p.B.equipment?'✓ Match':'≠ Different'}</strong></div>`:''}
+        ${dispChip}
+      </div>
+    </div>`;
+  }).join('');
+  }  // end tier loop
+  list.innerHTML = html;
+}
+
+function filterPairs(){
+  const q=document.getElementById('pairSearch').value.toLowerCase();
+  const min=+document.getElementById('scoreFilter').value||0;
+  filteredPairs=allPairs.filter(p=>{
+    const okS=p.score>=min;
+    const okQ=!q||[p.A.shipment,p.B.shipment,p.A.originCity,p.A.destCity,p.B.originCity,p.B.destCity].some(v=>v.toLowerCase().includes(q));
+    return okS&&okQ;
+  });
+  renderPairCards();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════════════════
+function exportCSV(){
+  if(!allPairs.length){toast('No pairs to export');return;}
+  const hdr=['Mode','Match #','Score','Grade','Outbound Shipment','Out Prod Date','Out Ship Date','Out Origin City','Out Origin State','Out Dest City','Out Dest State','Backhaul Shipment','Back Prod Date','Back Ship Date','Back Origin City','Back Origin State','Back Dest City','Back Dest State','Deadhead Miles','Return Miles','Backhaul Miles','Days Apart','Equip Match'];
+  const modeLabel = currentMode==='all'?'All Valid Pairs':'Best Assignment';
+  const rows=allPairs.map((p,i)=>[
+    modeLabel,i+1,p.score,p.score>=80?'Excellent':p.score>=55?'Good':'Fair',
+    p.A.shipment,p.A.prodDate?p.A.prodDate.toLocaleDateString():'',p.A.date?p.A.date.toLocaleDateString():'',
+    p.A.originCity,p.A.originState,p.A.destCity,p.A.destState,
+    p.B.shipment,p.B.prodDate?p.B.prodDate.toLocaleDateString():'',p.B.date?p.B.date.toLocaleDateString():'',
+    p.B.originCity,p.B.originState,p.B.destCity,p.B.destState,
+    p.deadheadMiles,p.returnMiles,p.bHaulMiles||'',
+    p.dateDiff!==null?Math.round(p.dateDiff):'',
+    p.A.equipment&&p.B.equipment?(p.A.equipment===p.B.equipment?'Match':'Different'):''
+  ]);
+  dlCSV([hdr,...rows],'clayton_connect_backhaul_matches.csv');
+  toast('✓ Matches exported');
+}
+
+function exportAnalyticsCSV(){
+  if(!analyticsData.length){toast('No analytics data to export');return;}
+  const yardHold=+document.getElementById('yardHold').value;
+  const baseAvgDH=allPairs.length?Math.round(allPairs.reduce((a,p)=>a+p.deadheadMiles,0)/allPairs.length):0;
+  const hdr=['Yard Hold (days)','Total Pairs','Match Rate %','Avg Deadhead (mi)','Added Pairs vs Baseline','Avg DH Reduction vs Baseline'];
+  const base=[[yardHold,allPairs.length,shipments.length?Math.round(allPairs.length*2/shipments.length*100):0,baseAvgDH,0,0]];
+  const rows=analyticsData.map(s=>[
+    s.holdDays,s.pairs.length,
+    shipments.length?Math.round(s.pairs.length*2/shipments.length*100):0,
+    s.avgDH,
+    s.pairs.length-allPairs.length,
+    baseAvgDH-s.avgDH
+  ]);
+  dlCSV([hdr,...base,...rows],'clayton_connect_opportunity_analysis.csv');
+  toast('✓ Opportunity analysis exported');
+}
+
+function dlCSV(rows,filename){
+  const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download=filename; a.click();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UNRESOLVED CITIES REPORT
+// ═══════════════════════════════════════════════════════════════════
+function renderUnresolvedCities(){
+  // Collect all city+state combos that have no coords after geocoding
+  const unresolved = new Map(); // key → {city, state, shipmentIds, asOrigin, asDest}
+
+  for(const s of shipments){
+    for(const [city, state, role] of [
+      [s.originCity, s.originState, 'origin'],
+      [s.destCity,   s.destState,   'dest'  ]
+    ]){
+      if(!city || !state) continue;
+      const coords = getCoords(city, state);
+      // Only flag if geocoding is complete (cache entry exists but is null)
+      const key = normCity(city, state);
+      if(coords === null && geocodeCache[key] !== undefined){
+        if(!unresolved.has(key)){
+          unresolved.set(key, {city: city.trim(), state: state.trim(), ids:[], roles: new Set()});
+        }
+        const rec = unresolved.get(key);
+        rec.ids.push(s.shipment);
+        rec.roles.add(role);
+      }
+    }
+  }
+
+  const el = document.getElementById('unresolvedContent');
+  if(!unresolved.size){
+    el.innerHTML=`<div class="empty"><div class="icon">✅</div><h3>All cities resolved</h3><p>Every city in your dataset has coordinates and will be included in matching.</p></div>`;
+
+    // Update tab badge
+    const btn = document.getElementById('tab-unresolved');
+    btn.textContent = 'Unresolved Cities';
+    return;
+  }
+
+  // Sort alphabetically by state then city
+  const rows = [...unresolved.values()].sort((a,b)=>
+    a.state.localeCompare(b.state)||a.city.localeCompare(b.city)
+  );
+
+  // Update tab with count badge
+  const btn = document.getElementById('tab-unresolved');
+  btn.innerHTML = `Unresolved Cities <span style="background:#C0392B;color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${rows.length}</span>`;
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>City</th><th>State</th><th>Used As</th>
+          <th>Affected Shipments</th><th>Sample IDs</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>`<tr>
+            <td><strong>${r.city}</strong></td>
+            <td>${r.state}</td>
+            <td style="color:var(--text-muted)">${[...r.roles].join(' & ')}</td>
+            <td style="text-align:center"><span class="tag tag-blue">${r.ids.length}</span></td>
+            <td style="color:var(--text-muted);font-size:12px">${r.ids.slice(0,3).join(', ')}${r.ids.length>3?` +${r.ids.length-3} more`:''}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-muted)">
+      ${rows.length} unique city/state combinations could not be geocoded.
+      These shipments are excluded from matching.
+      ${document.getElementById('geocodeBanner')?'<strong style="color:var(--clayton-blue)">Geocoding still in progress — check back shortly.</strong>':''}
+    </div>
+  `;
+}
+
+function exportUnresolvedCSV(){
+  const unresolved = new Map();
+  for(const s of shipments){
+    for(const [city, state, role] of [
+      [s.originCity, s.originState, 'origin'],
+      [s.destCity,   s.destState,   'dest'  ]
+    ]){
+      if(!city||!state) continue;
+      const key = normCity(city,state);
+      if(geocodeCache[key]!==undefined && geocodeCache[key]===null){
+        if(!unresolved.has(key))
+          unresolved.set(key,{city:city.trim(),state:state.trim(),count:0,roles:new Set(),ids:[]});
+        const r=unresolved.get(key);
+        r.count++; r.roles.add(role); r.ids.push(s.shipment);
+      }
+    }
+  }
+  if(!unresolved.size){toast('No unresolved cities to export');return;}
+  const hdr=['City','State','Used As','Affected Shipment Count','Sample Shipment IDs','Nominatim Query'];
+  const rows=[...unresolved.values()]
+    .sort((a,b)=>a.state.localeCompare(b.state)||a.city.localeCompare(b.city))
+    .map(r=>[
+      r.city, r.state, [...r.roles].join(' & '), r.count,
+      r.ids.slice(0,5).join('; '),
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(r.city+', '+(STATE_NAMES[r.state]||r.state)+', USA')}&format=json&limit=1&countrycodes=us`
+    ]);
+  dlCSV([hdr,...rows],'clayton_connect_unresolved_cities.csv');
+  toast(`✓ Exported ${rows.length} unresolved cities`);
+}
+
+// TOAST
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3600);}
+</script>
+</body>
+</html>
