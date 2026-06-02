@@ -1513,7 +1513,86 @@ const CITY_COORDS={
   "RUSTON,LA":[32.5238,-92.6382],
   "SULPHUR,LA":[30.2366,-93.3763],
   "THIBODAUX,LA":[29.7963,-90.8201],
-  "WINNFIELD,LA":[31.9249,-92.6368]
+  "WINNFIELD,LA":[31.9249,-92.6368],
+  // ── BATCH 2 ──
+  "ANNISTON,AL":[33.6598,-85.8316],
+  "CHILDERSBURG,AL":[33.2737,-86.3542],
+  "HACKLEBURG,AL":[34.2776,-87.8303],
+  "HENAGAR,AL":[34.6212,-85.7697],
+  "LOXLEY,AL":[30.6235,-87.7492],
+  "LYNN,AL":[34.0573,-87.5497],
+  "MOUNDVILLE,AL":[32.9918,-87.6261],
+  "MUSCLE SHOALS,AL":[34.7443,-87.6677],
+  "TUSCUMBIA,AL":[34.7312,-87.7047],
+  "WARRIOR,AL":[33.8187,-86.8103],
+  "BEEBE,AR":[35.0684,-91.8854],
+  "BRYANT,AR":[34.5954,-92.4896],
+  "LOWELL,AR":[36.2584,-94.1316],
+  "DELMAR,DE":[38.4557,-75.5774],
+  "BONIFAY,FL":[30.7916,-85.6794],
+  "CHIPLEY,FL":[30.7788,-85.5397],
+  "HOMOSASSA,FL":[28.7878,-82.6157],
+  "LAKE CITY,FL":[30.1897,-82.6393],
+  "MARIANNA,FL":[30.7738,-85.2288],
+  "FOLKSTON,GA":[30.8335,-82.0099],
+  "TRENTON,GA":[34.8726,-85.5127],
+  "MARION,IL":[37.7306,-88.9331],
+  "TEUTOPOLIS,IL":[39.1312,-88.4717],
+  "BENTON,KY":[36.8573,-88.3503],
+  "CAMPTON,KY":[37.7415,-83.5416],
+  "COMPTON,KY":[37.4137,-83.921],
+  "DRY RIDGE,KY":[38.6837,-84.5902],
+  "HAROLD,KY":[37.5501,-82.6249],
+  "MOUNT STERLING,KY":[38.0565,-83.943],
+  "MT. STERLING,KY":[38.0565,-83.943],
+  "RUSSELL SPRINGS,KY":[37.0576,-85.0877],
+  "WILLIAMSBURG,KY":[36.7437,-84.1596],
+  "CALHOUN,LA":[32.5371,-92.3693],
+  "CARENCRO,LA":[30.3185,-92.0499],
+  "FOLSOM,LA":[30.6299,-90.1937],
+  "GONZALES,LA":[30.2088,-90.9193],
+  "WALKER,LA":[30.4877,-90.8654],
+  "WINNSBORO,LA":[32.1638,-91.7193],
+  "BENTON,MO":[37.099,-89.5637],
+  "HARRISONVILLE,MO":[38.6547,-94.3491],
+  "HERMITAGE,MO":[37.9401,-93.3152],
+  "LEBANON,MO":[37.6806,-92.6635],
+  "TROY,MO":[38.9795,-90.9829],
+  "WEST PLAINS,MO":[36.7284,-91.8524],
+  "BEULAVILLE,NC":[34.9176,-77.7722],
+  "CASTALIA,NC":[36.0826,-78.0486],
+  "GROVER,NC":[35.174,-81.4595],
+  "MOUNT OLIVE,NC":[35.1976,-78.0675],
+  "OCEAN ISLE BEACH,NC":[33.8932,-78.4258],
+  "RANDLEMAN,NC":[35.8165,-79.8011],
+  "YOUNGSVILLE,NC":[36.0276,-78.4839],
+  "ABERDEEN,OH":[38.6637,-83.7624],
+  "BELPRE,OH":[39.2748,-81.5768],
+  "CLEVES,OH":[39.1637,-84.748],
+  "GALLIPOLIS,OH":[38.8184,-82.1988],
+  "CALERA,OK":[34.1023,-96.7756],
+  "GREENWOOD,SC":[34.1954,-82.1618],
+  "MAULDIN,SC":[34.7793,-82.3096],
+  "MONCKS CORNER,SC":[33.1957,-79.9984],
+  "ORANGEBURG,SC":[33.4918,-80.8651],
+  "SAINT GEORGE,SC":[33.1832,-80.5748],
+  "WEST COLUMBIA,SC":[33.9935,-81.0723],
+  "DOYLE,TN":[35.8323,-85.6169],
+  "LEXINGTON,TN":[35.6512,-88.3942],
+  "MAYNARDVILLE,TN":[36.2512,-83.7996],
+  "MCMINNVILLE,TN":[35.6834,-85.7697],
+  "POWELL,TN":[36.0237,-84.0205],
+  "ROGERSVILLE,TN":[36.4095,-83.0024],
+  "SODDY-DAISY,TN":[35.2345,-85.1791],
+  "SODDY DAISY,TN":[35.2345,-85.1791],
+  "STRAWBERRY PLAINS,TN":[36.0537,-83.7038],
+  "BRIDGEPORT,TX":[33.2148,-97.7517],
+  "CLEVELAND,TX":[30.3435,-95.0849],
+  "SPRINGTOWN,TX":[32.9679,-97.6878],
+  "CHRISTIANSBURG,VA":[37.1298,-80.4087],
+  "NITRO,WV":[38.4148,-81.8357],
+  "RIPLEY,WV":[38.8187,-81.7118],
+  "TURTLE CREEK,WV":[38.3987,-81.5357]
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1623,6 +1702,21 @@ async function geocodeAllUnknown(onProgress) {
   }
 }
 
+// Common typos found in source data — mapped to correct spellings
+// Add entries here when the Unresolved Cities report reveals consistent misspellings
+const CITY_TYPOS = {
+  'PELHAN':      'PELHAM',       // AL
+  'DUBIN':       'DUBLIN',       // GA
+  'JESSUP':      'JESUP',        // GA (Jesup is correct spelling)
+  'LOUSVILLE':   'LOUISVILLE',   // KY
+  'PAEARL':      'PEARL',        // MS
+  'VIXKSBURG':   'VICKSBURG',    // MS
+  'MAUDIN':      'MAULDIN',      // SC
+  'ORANEBURG':   'ORANGEBURG',   // SC
+  'DOOYLE':      'DOYLE',        // TN
+  'MICMINNVILLE':'MCMINNVILLE',  // TN
+};
+
 // Synchronous local-DB-only lookup (used internally)
 function getCoordsLocal(city, state) {
   if (!city || !state) return null;
@@ -1630,9 +1724,11 @@ function getCoordsLocal(city, state) {
     .replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g, ' ')
     .replace(/[^\x20-\x7E]/g, ' ')
     .trim().replace(/\s+/g, ' ').toUpperCase();
-  const cleanCity = clean(city);
+  let cleanCity = clean(city);
   const cleanState = clean(state);
   if (!cleanCity || !cleanState) return null;
+  // Apply typo corrections before lookup
+  if (CITY_TYPOS[cleanCity]) cleanCity = CITY_TYPOS[cleanCity];
   const key = `${cleanCity},${cleanState}`;
   if (CITY_COORDS[key]) return CITY_COORDS[key];
   const alpha = s => s.replace(/[^A-Z,]/g, '');
