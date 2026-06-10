@@ -1741,9 +1741,17 @@ function getCoordsLocal(city, state) {
     return letters(kc) === letters(cleanCity) && letters(ks) === letters(cleanState);
   });
   if (loose) return CITY_COORDS[loose];
+  // startsWith match — only allow if city names are within 20% length of each other
+  // This prevents e.g. "HENDERSON" silently matching "HENDERSONVILLE" (10 vs 13 chars)
   const sw = Object.keys(CITY_COORDS).find(k => {
     const [kc,ks] = k.split(',');
-    return ks === cleanState && (kc.startsWith(cleanCity) || cleanCity.startsWith(kc));
+    if(ks !== cleanState) return false;
+    const matches = kc.startsWith(cleanCity) || cleanCity.startsWith(kc);
+    if(!matches) return false;
+    // Reject if the longer name is more than 20% longer than the shorter
+    const longer = Math.max(kc.length, cleanCity.length);
+    const shorter = Math.min(kc.length, cleanCity.length);
+    return longer / shorter <= 1.2;
   });
   if (sw) return CITY_COORDS[sw];
   return null;
@@ -2950,3 +2958,5 @@ function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t
   "WOODLAWN,VA":[36.7273,-80.8698],
   "BEAVER,WV":[37.7737,-81.1251],
   "MOUNT NEBO,WV":[38.1887,-80.8537]
+  // ── HENDERSON FIX — correct Vance County NC coords ──
+  "HENDERSON,NC":[36.3298,-78.4011]
