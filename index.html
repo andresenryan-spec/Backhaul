@@ -1314,10 +1314,19 @@ function loadFile(file){
   reader.onerror=()=>toast('⚠️ Error reading file — please try again.');
   reader.onload=e=>{
     try{
-      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      // Use array buffer + type:'array' — more robust than binary string,
+      // handles MSIP sensitivity labels and other corporate Excel metadata
+      const data = new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array',cellDates:true,
+        WTF:false,          // don't throw on unrecognised features
+        ignoreEC:true,      // ignore error cells
+        dense:false});
       const sheetName=wb.SheetNames.find(n=>!/instruction/i.test(n))||wb.SheetNames[0];
       const ws=wb.Sheets[sheetName];
-      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // Force full range — ignore any defined names like _FilterDatabase
+      // that could restrict the rows SheetJS reads
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:I2000');
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',range:0});
 
       // Find header row
       let headerIdx=-1;
@@ -1413,7 +1422,7 @@ function loadFile(file){
       }
     }catch(err){toast('Error reading file: '+err.message);console.error(err);}
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
 }
 
 // ── Geocode progress banner ──────────────────────────────────────
