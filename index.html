@@ -499,21 +499,23 @@
     </div>
   </div>
 
-  <div class="info-strip">
-    Upload your outbound shipments and the Backhaul Matcher finds return loads that reduce empty miles.
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+    <div class="info-strip" style="flex:1;margin-bottom:0">
+      Upload your outbound shipments and the Backhaul Matcher finds return loads that reduce empty miles.
+      The engine scores every candidate pair on deadhead distance, return proximity to origin, and date windows —
+      then ranks results so your team can act fast.
+    </div>
     <a href="Backhaul_Template.xlsx" download
-       style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;
+       style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
               background:var(--navy);color:white;border-radius:6px;
-              padding:7px 14px;font-size:12px;font-weight:600;text-decoration:none;
-              border:none;cursor:pointer">
+              padding:9px 16px;font-size:13px;font-weight:600;text-decoration:none;
+              white-space:nowrap;box-shadow:0 1px 4px rgba(2,45,77,.15)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
         <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
       </svg>
       Download Template
     </a>
-    The engine scores every candidate pair on deadhead distance, return proximity to origin, and date windows —
-    then ranks results so your team can act fast. Set your tolerances, run the analysis, and export to CSV.
   </div>
 
   <div class="card">
@@ -1107,7 +1109,17 @@ const CITY_COORDS={
   "WOODLAND,MS":[33.7982,-89.1162],"WOODLAWN,VA":[36.7273,-80.8698],"WOONSOCKET,RI":[42.0029,-71.5148],"WORCESTER,MA":[42.2626,-71.8023],
   "WYOMING,MI":[42.9134,-85.7053],"WYTHEVILLE,VA":[36.9487,-81.0845],"YAKIMA,WA":[46.6021,-120.5059],"YAZOO CITY,MS":[32.8554,-90.4057],
   "YONKERS,NY":[40.9312,-73.8988],"YORK,PA":[39.9626,-76.7277],"YORK,SC":[34.9946,-81.2362],"YOUNGSTOWN,OH":[41.0998,-80.6495],
-  "YOUNGSVILLE,NC":[36.0276,-78.4839],"YUMA,AZ":[32.6927,-114.6277],"ZANESVILLE,OH":[39.9403,-82.0132],"ZEBULON,NC":[35.824,-78.3122]
+  "YOUNGSVILLE,NC":[36.0276,-78.4839],"YUMA,AZ":[32.6927,-114.6277],"ZANESVILLE,OH":[39.9403,-82.0132],"ZEBULON,NC":[35.824,-78.3122],
+  "BREWERTON,NY":[43.2326,-76.1466],
+  "GLEN JEAN,WV":[37.9718,-81.174],
+  "BLOOMSBURG,PA":[41.0048,-76.4549],
+  "WHITESVILLE,KY":[37.3423,-86.8594],
+  "JACKSBORO,TN":[36.3284,-84.1863],
+  "MARION,SC":[34.1793,-79.3986],
+  "PIEDMONT,SC":[34.704,-82.4623],
+  "GREENVILLE,PA":[41.4034,-80.3901],
+  "BALDWIN,GA":[34.5018,-83.5316],
+  "WINSTON SALEM,NC":[36.0999,-80.2442]
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1439,7 +1451,21 @@ function hideGeocodeProgress(){
 // CSS spin animation (injected once)
 (()=>{const s=document.createElement('style');s.textContent='@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}';document.head.appendChild(s);})();
 
-function parseDate(v){if(!v)return null;if(v instanceof Date)return isNaN(v)?null:v;const d=new Date(v);return isNaN(d)?null:d;}
+function parseDate(v){
+  if(!v && v!==0) return null;
+  // Already a Date object (cellDates:true working correctly)
+  if(v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  // Numeric Excel serial (cellDates:true failed, returned raw serial)
+  // Excel serial 1 = Jan 1, 1900. JS Date epoch = Jan 1, 1970.
+  if(typeof v === 'number' && v > 1 && v < 100000) {
+    // Convert Excel serial to JS Date
+    const d = new Date(Math.round((v - 25569) * 86400000));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // String date
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
 function fmtDate(d){return d?d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';}
 
 // ═══════════════════════════════════════════════════════════════════
