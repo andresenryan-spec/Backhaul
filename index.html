@@ -485,7 +485,7 @@
       Upload Shipment File
     </div>
     <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onclick="event.stopPropagation()"/>
       <svg class="upload-truck" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect x="2" y="14" width="34" height="24" rx="4" stroke="currentColor" stroke-width="2.5"/>
         <path d="M36 22 H48 L54 32 V38 H36 V22Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
@@ -1311,6 +1311,7 @@ dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over
 
 function loadFile(file){
   const reader=new FileReader();
+  reader.onerror=()=>toast('⚠️ Error reading file — please try again.');
   reader.onload=e=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
