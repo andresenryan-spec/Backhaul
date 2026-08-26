@@ -495,7 +495,7 @@
       </svg>
       <h3>Drop your shipment file here</h3>
       <p>Drag &amp; drop or click to browse · .xlsx, .xls, .csv supported</p>
-      <span class="upload-hint">Use the Clayton Connect Backhaul Template for best results</span>
+      <span class="upload-hint">Accepts the Clayton Connect Backhaul Template <b>or</b> a raw OTM Outbound Orders export — auto-detected</span>
     </div>
   </div>
 
@@ -1302,8 +1302,108 @@ function goTo(n){[1,2,3,4].forEach(i=>{document.getElementById('panel'+i).classL
 function reset(){shipments=[];allPairs=[];filteredPairs=[];document.getElementById('fileInput').value='';hideGeocodeProgress();goTo(1);}
 
 // ═══════════════════════════════════════════════════════════════════
-// FILE LOADING — ALL BUGS FIXED
+// FILE LOADING — dual-format (Backhaul Template + OTM Outbound export)
 // ═══════════════════════════════════════════════════════════════════
+
+// Rows to drop regardless of format (template placeholder rows, blanks)
+const SKIP_ROWS=new Set(['required','optional','example','sample','n/a','na','origincity','destcity','city','','origin city','dest city','destination city','pickup city']);
+let lastFormatLabel='';
+
+// ── PARSER 1: OTM "Outbound Orders" export (mapped by COLUMN POSITION) ──
+// The OTM export has two identically-named location blocks:
+//   [18] Name  [19] City  [20] State/Province Code   ← ORIGIN (plant/pickup)
+//   [22] Name  [23] City  [24] State/Province Code   ← DESTINATION (customer)
+// Header-name matching can't tell these apart, so we key off fixed positions
+// after confirming the file's signature columns are where OTM puts them.
+function parseOtmExport(aoa, {parseShipmentId, cell}){
+  // Locate the header row (OTM sometimes has a numeric timestamp/blank rows above it)
+  let h=-1;
+  for(let r=0;r<Math.min(aoa.length,15);r++){
+    const j=aoa[r].map(v=>String(v).toLowerCase().trim());
+    if(j.includes('order number') && j.includes('domain name') &&
+       j.filter(x=>x==='city').length>=2){ h=r; break; }
+  }
+  if(h===-1) return null;  // not an OTM export → let template parser try
+
+  const H=aoa[h].map(v=>String(v).trim());
+  const at=name=>H.findIndex(x=>x.toLowerCase()===name.toLowerCase());
+  // Anchor on the two "City" columns; origin = first, destination = second.
+  const cityIdxs=H.map((x,i)=>x.toLowerCase()==='city'?i:-1).filter(i=>i>=0);
+  if(cityIdxs.length<2) return null;
+  const oCity=cityIdxs[0], dCity=cityIdxs[1];
+  // State sits immediately to the right of each City in the OTM layout.
+  const oState=oCity+1, dState=dCity+1;
+  const cOrder = at('Order Number');
+  const cNotes = at('Order Notes');
+  const cShip  = at('Early Pickup Date');   // outbound pickup = ship date
+  const cProd  = at('Estimated Offline Dt');// build/offline ≈ production date
+  const cProdA = at('Offline Date');        // fallback if Estimated is blank
+  const cDim   = at('Dimension');           // STANDARD / OVERDIM
+
+  lastFormatLabel='OTM Outbound';
+  const rows=aoa.slice(h+1)
+    .map(row=>({
+      shipment:    cOrder>=0 ? parseShipmentId(row[cOrder]) : '',
+      prodDate:    parseDate(row[cProd]) || (cProdA>=0?parseDate(row[cProdA]):null),
+      date:        cShip>=0 ? parseDate(row[cShip]) : null,
+      originCity:  cell(row[oCity]),
+      originState: cell(row[oState]),
+      destCity:    cell(row[dCity]),
+      destState:   cell(row[dState]),
+      // No trailer column in OTM; tag over-dimensional loads so filters still work.
+      equipment:   (cDim>=0 && /overdim/i.test(cell(row[cDim]))) ? 'Over-Dimensional' : '',
+      notes:       cNotes>=0 ? cell(row[cNotes]) : '',
+    }))
+    .filter(r=>r.originCity && r.destCity &&
+               !SKIP_ROWS.has(r.originCity.toLowerCase()) &&
+               !SKIP_ROWS.has(r.destCity.toLowerCase()))
+    .map((r,i)=>({...r, shipment:r.shipment||`OB-${String(i+1).padStart(5,'0')}`}));
+  return rows;
+}
+
+// ── PARSER 2: Clayton Connect Backhaul Template (mapped by HEADER NAME) ──
+function parseTemplate(aoa, {norm, parseShipmentId}){
+  let headerIdx=-1;
+  for(let r=0;r<Math.min(aoa.length,10);r++){
+    const joined=aoa[r].map(v=>String(v)).join('|').toLowerCase();
+    if(joined.includes('origin')&&(joined.includes('dest')||joined.includes('city'))){headerIdx=r;break;}
+  }
+  if(headerIdx===-1) return null;
+
+  const headers=aoa[headerIdx].map(h=>String(h).trim());
+  const findCol=(...terms)=>{const idx=headers.findIndex(h=>terms.some(t=>norm(h)===t||norm(h).startsWith(t)||norm(h).includes(t)));return idx>=0?idx:null;};
+
+  // findCol checks: norm(header)===term OR norm(header).startsWith(term) OR norm(header).includes(term)
+  // 'Shipment #' normalizes to 'shipment' — must be first term for startsWith to catch 'shipmentno' etc.
+  const colShipment  =findCol('shipment','shipmentno','shipmentnumber','shipmenthash','shipmentid','shpno','loadnum','loadnumber','orderno','orderid','pronumber','pronum','bolnumber','bol');
+  const colProdDate  =findCol('productiondate','proddate','production','mfgdate','manufacturedate','builddate');
+  const colDate      =findCol('shipdate','shipdt','shipday');
+  const colOrigCity  =findCol('origincity','origcity','origincit','pickupcity','pupcity');
+  const colOrigState =findCol('originstate','origstate','originst','origst','pickupstate','pupstate');
+  const colDestCity  =findCol('destcity','destinationcity','delivcity','delivercity','dlvcity');
+  const colDestState =findCol('deststate','destinationstate','delivstate','deliverstate','dlvstate');
+  const colEquip     =findCol('equipmenttype','equiptype','equipment','equip','trailer');
+  const colNotes     =findCol('notes','comment','remarks','note');
+
+  if(colOrigCity===null||colDestCity===null) return 'NOCOLS';
+
+  lastFormatLabel='Backhaul Template';
+  return aoa.slice(headerIdx+1)
+    .map(row=>({
+      shipment:    colShipment!=null  ? parseShipmentId(row[colShipment])     : '',
+      prodDate:    colProdDate!=null  ? parseDate(row[colProdDate])           : null,
+      date:        colDate!=null      ? parseDate(row[colDate])               : null,
+      originCity:  colOrigCity!=null  ? String(row[colOrigCity]||'').trim()  : '',
+      originState: colOrigState!=null ? String(row[colOrigState]||'').trim() : '',
+      destCity:    colDestCity!=null  ? String(row[colDestCity]||'').trim()  : '',
+      destState:   colDestState!=null ? String(row[colDestState]||'').trim() : '',
+      equipment:   colEquip!=null     ? String(row[colEquip]||'').trim()     : '',
+      notes:       colNotes!=null     ? String(row[colNotes]||'').trim()     : '',
+    }))
+    .filter(r=>r.originCity&&r.destCity&&!SKIP_ROWS.has(r.originCity.toLowerCase())&&!SKIP_ROWS.has(r.destCity.toLowerCase()))
+    .map((r,i)=>({...r,shipment:r.shipment||`SHP-${String(i+1).padStart(5,'0')}`}));
+}
+
 document.getElementById('fileInput').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);});
 const dz=document.getElementById('dropZone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
@@ -1329,15 +1429,6 @@ function loadFile(file){
       const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:I2000');
       const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',range:0});
 
-      // Find header row
-      let headerIdx=-1;
-      for(let r=0;r<Math.min(aoa.length,10);r++){
-        const joined=aoa[r].map(v=>String(v)).join('|').toLowerCase();
-        if(joined.includes('origin')&&(joined.includes('dest')||joined.includes('city'))){headerIdx=r;break;}
-      }
-      if(headerIdx===-1){toast('⚠️ Could not find header row.');return;}
-
-      const headers=aoa[headerIdx].map(h=>String(h).trim());
       const norm=s=>String(s).toLowerCase().replace(/[^a-z]/g,'');
       // Robust shipment ID parser — preserves leading zeros, handles numeric
       // floats from Excel (10001.0 → "10001"), and catches scientific notation
@@ -1353,41 +1444,24 @@ function loadFile(file){
         // String — trim and return as-is (preserves leading zeros, dashes, etc.)
         return String(v).trim();
       };
+      const cell = v => String(v==null?'':v).trim();
 
-      const findCol=(...terms)=>{const idx=headers.findIndex(h=>terms.some(t=>norm(h)===t||norm(h).startsWith(t)||norm(h).includes(t)));return idx>=0?idx:null;};
+      // ── FORMAT DISPATCH ─────────────────────────────────────────────
+      // The tool accepts two upload formats:
+      //   1. Clayton Connect Backhaul Template — mapped by HEADER NAME
+      //   2. Raw OTM "Outbound Orders" export  — mapped by COLUMN POSITION
+      // OTM is detected first because its origin/dest columns share generic,
+      // duplicate names (Name / City / State/Province Code) that header-name
+      // matching cannot disambiguate. Both paths emit identical shipment objects.
+      let parsed = parseOtmExport(aoa, {parseShipmentId, cell}) ||
+                   parseTemplate(aoa, {norm, parseShipmentId});
 
-      // findCol checks: norm(header)===term OR norm(header).startsWith(term) OR norm(header).includes(term)
-      // 'Shipment #' normalizes to 'shipment' — must be first term for startsWith to catch 'shipmentno' etc.
-      const colShipment  =findCol('shipment','shipmentno','shipmentnumber','shipmenthash','shipmentid','shpno','loadnum','loadnumber','orderno','orderid','pronumber','pronum','bolnumber','bol');
-      const colProdDate  =findCol('productiondate','proddate','production','mfgdate','manufacturedate','builddate');
-      const colDate      =findCol('shipdate','shipdt','shipday');
-      const colOrigCity  =findCol('origincity','origcity','origincit','pickupcity','pupcity');
-      const colOrigState =findCol('originstate','origstate','originst','origst','pickupstate','pupstate');
-      const colDestCity  =findCol('destcity','destinationcity','delivcity','delivercity','dlvcity');
-      const colDestState =findCol('deststate','destinationstate','delivstate','deliverstate','dlvstate');
-      const colEquip     =findCol('equipmenttype','equiptype','equipment','equip','trailer');
-      const colNotes     =findCol('notes','comment','remarks','note');
+      if(parsed===null){toast('⚠️ Could not find a recognizable header row.');return;}
+      if(parsed==='NOCOLS'){toast('⚠️ Could not map Origin City / Dest City columns.');return;}
 
-      if(colOrigCity===null||colDestCity===null){toast('⚠️ Could not map Origin City / Dest City columns.');return;}
-
-      const SKIP=new Set(['required','optional','example','sample','n/a','na','origincity','destcity','city','']);
-
-      shipments=aoa.slice(headerIdx+1)
-        .map(row=>({
-          shipment:    colShipment!=null  ? parseShipmentId(row[colShipment])     : '',
-          prodDate:    colProdDate!=null  ? parseDate(row[colProdDate])           : null,
-          date:        colDate!=null      ? parseDate(row[colDate])               : null,
-          originCity:  colOrigCity!=null  ? String(row[colOrigCity]||'').trim()  : '',
-          originState: colOrigState!=null ? String(row[colOrigState]||'').trim() : '',
-          destCity:    colDestCity!=null  ? String(row[colDestCity]||'').trim()  : '',
-          destState:   colDestState!=null ? String(row[colDestState]||'').trim() : '',
-          equipment:   colEquip!=null     ? String(row[colEquip]||'').trim()     : '',
-          notes:       colNotes!=null     ? String(row[colNotes]||'').trim()     : '',
-        }))
-        .filter(r=>r.originCity&&r.destCity&&!SKIP.has(r.originCity.toLowerCase())&&!SKIP.has(r.destCity.toLowerCase()))
-        .map((r,i)=>({...r,shipment:r.shipment||`SHP-${String(i+1).padStart(5,'0')}`}));
-
+      shipments = parsed;
       if(!shipments.length){toast('⚠️ No valid shipment rows found.');return;}
+      toast(`✓ Detected ${lastFormatLabel} format — ${shipments.length} shipment${shipments.length===1?'':'s'} loaded`);
 
       // Count UNIQUE unknown city keys (not rows) for accurate progress tracking
       const unknownCityKeys = new Set();
