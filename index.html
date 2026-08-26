@@ -692,11 +692,6 @@
   <div class="section-header">
     <div class="section-title">Results <span id="resultModeTag" style="font-size:11px;font-weight:500;background:var(--sky-blue);color:var(--navy);padding:2px 10px;border-radius:10px;margin-left:10px;vertical-align:middle"></span></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted)">
-        <span title="Used to draw the full round-trip route on each pair's map link">Home base:</span>
-        <input type="text" id="homeBaseCity" value="Maryville" style="width:110px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" oninput="onHomeBaseChange()"/>
-        <input type="text" id="homeBaseState" value="TN" maxlength="2" style="width:44px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;text-transform:uppercase" oninput="onHomeBaseChange()"/>
-      </div>
       <button class="btn btn-ghost" onclick="goTo(3)">← Adjust Parameters</button>
       <button class="btn btn-secondary" onclick="exportExcel()">⬇ Export Excel</button>
       <button class="btn btn-secondary" onclick="exportCSV()">⬇ CSV</button>
@@ -820,6 +815,29 @@ function updateQueueCount(){
 // CITY COORDINATE DB — 500+ US cities (Haversine straight-line miles)
 // ═══════════════════════════════════════════════════════════════════
 const CITY_COORDS={
+  // ── Added from Aug 2026 unresolved-cities batch (86 towns geocoded offline) ──
+  "ALEXANDRIA,AL":[33.7808,-85.8924],"ASHLAND,VA":[37.7395,-77.4784],"AYNOR,SC":[33.9823,-79.1777],"BALLSTON SPA,NY":[43.005,-73.8486],
+  "BARNWELL,SC":[33.2335,-81.3523],"BASOM,NY":[43.0807,-78.3951],"BELLE VERNON,PA":[40.1437,-79.8345],"BENNETTSVILLE,SC":[34.6255,-79.6898],
+  "BONNEAU,SC":[33.2973,-79.9216],"BOWDON,GA":[33.5373,-85.2533],"BRANDENBURG,KY":[37.9662,-86.1084],"BROWNS SUMMIT,NC":[36.2019,-79.7101],
+  "BUSHNELL,FL":[28.6611,-82.1553],"CARTHAGE,MS":[32.7886,-89.5353],"CHESTER,VA":[37.3429,-77.4156],"CHIEFLAND,FL":[29.4832,-82.8809],
+  "CLAXTON,GA":[32.165,-81.908],"CLINTON,NC":[35.0151,-78.326],"COCOA,FL":[28.3672,-80.7465],"COLCORD,OK":[36.2333,-94.6547],
+  "CRESTVIEW,FL":[30.7706,-86.5537],"DAHLONEGA,GA":[34.5299,-83.9798],"DALEVILLE,AL":[31.2811,-85.7305],"DEFUNIAK SPRINGS,FL":[30.7518,-86.138],
+  "DEMOPOLIS,AL":[32.4908,-87.8397],"DERIDDER,LA":[30.8287,-93.2685],"DOVER,OH":[40.5343,-81.4763],"EAST PALATKA,FL":[29.6609,-81.5879],
+  "EL RENO,OK":[35.5335,-97.9591],"FLEMINGSBURG,KY":[38.428,-83.708],"FORT PIERCE,FL":[27.4382,-80.444],"FREEPORT,FL":[30.4896,-86.1684],
+  "GENEVA,AL":[31.0414,-85.8847],"GLEN ALLEN,VA":[37.6658,-77.5066],"GLENNVILLE,GA":[31.9467,-81.9483],"IOWA,LA":[30.2219,-93.0259],
+  "JACKSON,AL":[31.5131,-87.8672],"JONESBORO,GA":[33.5242,-84.359],"JONESVILLE,LA":[31.6365,-91.8458],"JONESVILLE,NC":[36.2286,-80.787],
+  "LADSON,SC":[32.993,-80.1257],"LAKE CITY,SC":[33.8655,-79.7418],"LATTA,SC":[34.3398,-79.4417],"LAUREL HILL,NC":[34.8238,-79.5491],
+  "LEESBURG,GA":[31.6812,-84.1593],"LENOX,GA":[31.2664,-83.4481],"MADISONVILLE,TN":[35.5009,-84.3519],"MANY,LA":[31.5851,-93.4641],
+  "MILLSBORO,DE":[38.5934,-75.2555],"MILTON,FL":[30.6604,-87.0473],"MOCKSVILLE,NC":[35.922,-80.537],"MOHAWK,TN":[36.1869,-83.0902],
+  "MOUNT OLIVE,AL":[33.6768,-86.8717],"MOUNT VERNON,IL":[38.317,-88.9105],"MURFREESBORO,NC":[36.4319,-77.1027],"NEOSHO,MO":[36.8706,-94.3862],
+  "NORTON,VA":[36.9378,-82.6249],"NOTASULGA,AL":[32.5437,-85.6871],"ORRVILLE,OH":[40.8458,-81.7741],"OXFORD,MS":[34.3544,-89.4969],
+  "PAGELAND,SC":[34.7722,-80.3966],"PANAMA CITY,FL":[30.1606,-85.6494],"PARADISE,PA":[39.9852,-76.1081],"PINEHURST,TX":[30.1581,-95.6814],
+  "POCOMOKE CITY,MD":[38.0714,-75.555],"PRAIRIEVILLE,LA":[30.3156,-90.9299],"PRINCETON,NC":[35.4558,-78.1674],"RED BOILING SPRINGS,TN":[36.5313,-85.8463],
+  "RICHLAND,MO":[37.8528,-92.3962],"RICHLANDS,NC":[34.8624,-77.5863],"RIPLEY,MS":[34.7509,-88.924],"ROGERSVILLE,MO":[37.131,-93.0964],
+  "ROLESVILLE,NC":[35.9156,-78.4658],"RUSTBURG,VA":[37.2545,-79.1215],"SMITHVILLE,GA":[31.8847,-84.2271],"SOUTH CHARLESTON,WV":[38.3684,-81.6998],
+  "ST. ALBANS,WV":[38.3774,-81.8305],"SUMMIT,MS":[31.2975,-90.4654],"TAYLORS,SC":[34.9245,-82.3197],"THEODORE,AL":[30.5444,-88.1807],
+  "THOMASVILLE,AL":[31.9067,-87.7598],"TROUTMAN,NC":[35.6863,-80.8822],"VILLA RICA,GA":[33.7173,-84.9297],"WEST MONROE,LA":[32.5317,-92.176],
+  "WILKESBORO,NC":[36.1359,-81.1573],"WOODVILLE,MS":[31.1459,-91.3076],
   "ABERDEEN,MS":[33.8249,-88.5445],"ABERDEEN,OH":[38.6637,-83.7624],"ABERDEEN,SD":[45.4647,-98.4865],"ABILENE,TX":[32.4487,-99.7331],
   "ABINGDON,VA":[36.7098,-81.9774],"ADDISON,AL":[34.2001,-87.1772],"AIKEN,SC":[33.5601,-81.7198],"AKRON,OH":[41.0814,-81.519],
   "ALAMOGORDO,NM":[32.8995,-105.9603],"ALBANY,GA":[31.5785,-84.1557],"ALBANY,NY":[42.6526,-73.7562],"ALBANY,OR":[44.6365,-123.1059],
@@ -1414,25 +1432,45 @@ function parseOtmExport(aoa, {parseShipmentId, cell}){
   const cProd  = at('Estimated Offline Dt');// build/offline ≈ production date
   const cProdA = at('Offline Date');        // fallback if Estimated is blank
   const cDim   = at('Dimension');           // STANDARD / OVERDIM
+  const cFloor = at('Floor Count');         // # of physical shipments per order
 
   lastFormatLabel='OTM Outbound';
-  const rows=aoa.slice(h+1)
-    .map(row=>({
-      shipment:    cOrder>=0 ? parseShipmentId(row[cOrder]) : '',
+  const SUFFIX=['A','B','C','D','E','F'];   // one physical load per floor
+  const rows=[];
+  aoa.slice(h+1).forEach(row=>{
+    const originCity=cell(row[oCity]), destCity=cell(row[dCity]);
+    if(!originCity || !destCity) return;
+    if(SKIP_ROWS.has(originCity.toLowerCase()) || SKIP_ROWS.has(destCity.toLowerCase())) return;
+
+    const base={
+      order:       cOrder>=0 ? parseShipmentId(row[cOrder]) : '',
       prodDate:    parseDate(row[cProd]) || (cProdA>=0?parseDate(row[cProdA]):null),
       date:        cShip>=0 ? parseDate(row[cShip]) : null,
-      originCity:  cell(row[oCity]),
-      originState: cell(row[oState]),
-      destCity:    cell(row[dCity]),
-      destState:   cell(row[dState]),
+      originCity, originState: cell(row[oState]),
+      destCity,   destState:   cell(row[dState]),
       // No trailer column in OTM; tag over-dimensional loads so filters still work.
       equipment:   (cDim>=0 && /overdim/i.test(cell(row[cDim]))) ? 'Over-Dimensional' : '',
       notes:       cNotes>=0 ? cell(row[cNotes]) : '',
-    }))
-    .filter(r=>r.originCity && r.destCity &&
-               !SKIP_ROWS.has(r.originCity.toLowerCase()) &&
-               !SKIP_ROWS.has(r.destCity.toLowerCase()))
-    .map((r,i)=>({...r, shipment:r.shipment||`OB-${String(i+1).padStart(5,'0')}`}));
+    };
+
+    // Floor Count = how many physical shipments this order becomes (a doublewide
+    // ships as two loads). Split each order into A / B / … — one per floor — so
+    // every floor is matched independently, each on its own truck.
+    let floors = cFloor>=0 ? parseInt(cell(row[cFloor]),10) : 1;
+    if(!Number.isFinite(floors) || floors<1) floors=1;
+    if(floors>SUFFIX.length) floors=SUFFIX.length;
+
+    for(let f=0; f<floors; f++){
+      const sfx = floors>1 ? `-${SUFFIX[f]}` : '';
+      rows.push({
+        ...base,
+        shipment: (base.order||`OB-${String(rows.length+1).padStart(5,'0')}`)+sfx,
+        order: base.order,
+        floor: floors>1 ? SUFFIX[f] : '',
+        floorsInOrder: floors,
+      });
+    }
+  });
   return rows;
 }
 
@@ -2470,31 +2508,21 @@ function filterPairs(){
 // ═══════════════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════════════
 // GOOGLE MAPS ROUTE LINK  (full round trip for a pair)
-// Home Base → Outbound Origin → Outbound Dest → Backhaul Origin →
-// Backhaul Dest → Home Base. Lets planners visually validate direction,
-// loaded distance, and distance from home without hand-typing 5 stops.
+// Home base is always the OUTBOUND ORIGIN (the plant the truck leaves from).
+// Loop: Origin → Outbound Dest → Backhaul Origin → Backhaul Dest → Origin.
+// Lets planners visually validate direction, loaded distance, and distance
+// back home without hand-typing the stops.
 // ═══════════════════════════════════════════════════════════════════
-function getHomeBase(){
-  const c=(document.getElementById('homeBaseCity')?.value||'Maryville').trim();
-  const s=(document.getElementById('homeBaseState')?.value||'TN').trim().toUpperCase();
-  return {c,s};
-}
 function mapsRouteUrl(p){
-  const hb=getHomeBase();
   const stop=(c,s)=>`${c}, ${s}`;
   const stops=[
-    stop(hb.c,hb.s),                                 // home base
-    stop(p.A.originCity,p.A.originState),            // outbound pickup
+    stop(p.A.originCity,p.A.originState),            // home base = outbound origin
     stop(p.A.destCity,p.A.destState),                // outbound delivery
     stop(p.B.originCity,p.B.originState),            // backhaul pickup
     stop(p.B.destCity,p.B.destState),                // backhaul delivery
-    stop(hb.c,hb.s),                                 // return home
+    stop(p.A.originCity,p.A.originState),            // return home (same origin)
   ].map(encodeURIComponent).join('/');
   return `https://www.google.com/maps/dir/${stops}`;
-}
-function onHomeBaseChange(){
-  // Re-render pair cards so their map links pick up the new home base.
-  if(typeof filteredPairs!=='undefined' && filteredPairs && filteredPairs.length) renderPairCards();
 }
 
 function exportCSV(){
@@ -2524,7 +2552,6 @@ function exportCSV(){
 function exportExcel(){
   if(!allPairs.length){toast('No pairs to export');return;}
   if(typeof XLSX==='undefined'){toast('Excel library not loaded — use CSV');return;}
-  const hb=getHomeBase();
   const modeLabel = currentMode==='all'?'All Valid Pairs':'Best Assignment';
   const d=v=>v?new Date(v).toLocaleDateString('en-US'):'';
 
@@ -2578,7 +2605,7 @@ function exportExcel(){
     ['Clayton Connect — Backhaul Opportunities'],
     ['Generated', new Date().toLocaleString('en-US')],
     ['Mode', modeLabel],
-    ['Home Base', `${hb.c}, ${hb.s}`],
+    ['Home base', 'Outbound origin (per pair)'],
     [],
     ['Total pairs', allPairs.length],
     ['Excellent (≥80)', allPairs.filter(p=>p.score>=80).length],
