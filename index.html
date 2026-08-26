@@ -691,9 +691,15 @@
 <div class="panel" id="panel4">
   <div class="section-header">
     <div class="section-title">Results <span id="resultModeTag" style="font-size:11px;font-weight:500;background:var(--sky-blue);color:var(--navy);padding:2px 10px;border-radius:10px;margin-left:10px;vertical-align:middle"></span></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-muted)">
+        <span title="Used to draw the full round-trip route on each pair's map link">Home base:</span>
+        <input type="text" id="homeBaseCity" value="Maryville" style="width:110px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px" oninput="onHomeBaseChange()"/>
+        <input type="text" id="homeBaseState" value="TN" maxlength="2" style="width:44px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;text-transform:uppercase" oninput="onHomeBaseChange()"/>
+      </div>
       <button class="btn btn-ghost" onclick="goTo(3)">← Adjust Parameters</button>
-      <button class="btn btn-secondary" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-secondary" onclick="exportExcel()">⬇ Export Excel</button>
+      <button class="btn btn-secondary" onclick="exportCSV()">⬇ CSV</button>
       <button class="btn btn-primary" onclick="reset()">New Upload</button>
     </div>
   </div>
@@ -710,7 +716,7 @@
     </button>
     <button class="result-tab" id="tab-unresolved" onclick="switchTab('unresolved')"
       style="padding:10px 22px;border:none;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px">
-      Unresolved Cities
+      Unresolved Locations
     </button>
   </div>
 
@@ -724,6 +730,11 @@
         <option value="80">Excellent (≥ 80)</option>
         <option value="55">Good (≥ 55)</option>
       </select>
+      <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;white-space:nowrap">
+        <input type="checkbox" id="queueToggle" onchange="filterPairs()" style="width:15px;height:15px;cursor:pointer"/>
+        ⭐ Strong pairs queue
+        <span id="queueChip" style="display:none;align-items:center;background:var(--clayton-green);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px"><span id="queueCount">0</span></span>
+      </label>
     </div>
     <div id="pairList"></div>
     <div id="unmatchedSection" style="display:none">
@@ -741,10 +752,10 @@
   <!-- UNRESOLVED CITIES TAB -->
   <div id="tabpanel-unresolved" style="display:none">
     <div style="background:rgba(192,57,43,.06);border:1px solid rgba(192,57,43,.2);border-radius:8px;padding:16px 20px;margin-bottom:22px;font-size:13px;color:var(--navy);line-height:1.7">
-      Cities listed here could not be geocoded — they are <strong>excluded from matching</strong>.
-      Export this list and send it to your development team to add coordinates to the database.
-      If your browser allows network access, the app attempts to look these up via
-      <strong>OpenStreetMap/Nominatim</strong> automatically on upload.
+      Locations here couldn't be placed on the map, so their shipments are <strong>excluded from matching</strong>.
+      Hit <strong>Fix</strong> on any row to correct the spelling or pin a lat/long — the tool re-matches
+      immediately and <strong>remembers the fix on this computer</strong>, so future OTM uploads resolve it
+      automatically. On upload the app also tries <strong>OpenStreetMap</strong> to resolve unknowns for you.
     </div>
     <div id="unresolvedContent">
       <div class="empty"><div class="icon">✅</div><h3>All cities resolved</h3><p>Every city in your dataset has coordinates.</p></div>
@@ -778,6 +789,32 @@
 // STATE
 // ═══════════════════════════════════════════════════════════════════
 let shipments=[], allPairs=[], filteredPairs=[];
+
+// ── PLANNER FEEDBACK (local capture only) ──────────────────────────
+// Per-pair status + note, persisted to localStorage. This is a structured
+// feedback LOG for later human review/tuning — not an auto-learning model.
+// A stable key is derived from the two shipment IDs so a verdict survives
+// re-runs and re-uploads of the same pair.
+const FEEDBACK_KEY='claytonBackhaul.feedback.v1';
+function pairKey(p){ return `${p.A.shipment}__${p.B.shipment}`; }
+let feedback = (function(){
+  try{ return JSON.parse(localStorage.getItem(FEEDBACK_KEY))||{}; }catch(e){ return {}; }
+})();
+function saveFeedback(){ try{ localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedback)); }catch(e){} }
+function setPairStatus(key, status){
+  feedback[key]=feedback[key]||{}; feedback[key].status=status; saveFeedback();
+  updateQueueCount();
+}
+function setPairNote(key, note){
+  feedback[key]=feedback[key]||{}; feedback[key].note=note; saveFeedback();
+}
+function updateQueueCount(){
+  const n=Object.values(feedback).filter(f=>f.status==='Strong Valid Pair').length;
+  const el=document.getElementById('queueCount');
+  if(el) el.textContent = n;
+  const wrap=document.getElementById('queueChip');
+  if(wrap) wrap.style.display = n?'inline-flex':'none';
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // CITY COORDINATE DB — 500+ US cities (Haversine straight-line miles)
@@ -1244,6 +1281,44 @@ const CITY_TYPOS = {
   'MICMINNVILLE':'MCMINNVILLE',  // TN
   'FREDERICKBURG':'FREDERICKSBURG',  // VA
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// PERSISTENT CITY OVERRIDES  (localStorage — survives across sessions)
+// Planner-entered coordinate fixes from the Unresolved Locations panel are
+// stored here so a given CITY,ST never has to be corrected twice. On load
+// they're merged straight into CITY_COORDS so matching sees them instantly.
+// ═══════════════════════════════════════════════════════════════════
+const CITY_OVERRIDE_KEY = 'claytonBackhaul.cityOverrides.v1';
+function loadCityOverrides(){
+  try{
+    const raw = localStorage.getItem(CITY_OVERRIDE_KEY);
+    if(!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj==='object') ? obj : {};
+  }catch(e){ console.warn('City overrides unreadable:', e.message); return {}; }
+}
+function saveCityOverride(key, coords){
+  // key already normalized "CITY,ST"; coords = [lat,lng]
+  const all = loadCityOverrides();
+  all[key] = coords;
+  try{ localStorage.setItem(CITY_OVERRIDE_KEY, JSON.stringify(all)); }
+  catch(e){ console.warn('Could not persist override:', e.message); }
+  CITY_COORDS[key] = coords;      // live DB
+  geocodeCache[key] = coords;     // clear any prior "null" miss
+}
+function deleteCityOverride(key){
+  const all = loadCityOverrides();
+  delete all[key];
+  try{ localStorage.setItem(CITY_OVERRIDE_KEY, JSON.stringify(all)); }catch(e){}
+  // Note: leaves CITY_COORDS as-is for the session; gone on next reload.
+}
+// Merge any saved overrides into the live DB at startup.
+(function primeCityOverrides(){
+  const all = loadCityOverrides();
+  let n=0;
+  for(const k in all){ if(Array.isArray(all[k])&&all[k].length===2){ CITY_COORDS[k]=all[k]; n++; } }
+  if(n) console.log(`Loaded ${n} saved city correction(s) from localStorage.`);
+})();
 
 // Synchronous local-DB-only lookup (used internally)
 function getCoordsLocal(city, state) {
@@ -2153,6 +2228,7 @@ function renderResults(matched){
       <td style="color:var(--text-muted)">No match within parameters</td>
     </tr>`).join('');
   } else {document.getElementById('unmatchedSection').style.display='none';}
+  updateQueueCount();
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2354,7 +2430,22 @@ function renderPairCards(){
         ${p.dateDiff!==null?`<div class="meta-chip">Days apart:<strong>${Math.round(p.dateDiff)}</strong></div>`:''}
         ${p.A.equipment&&p.B.equipment?`<div class="meta-chip">Equipment:<strong>${p.A.equipment===p.B.equipment?'✓ Match':'≠ Different'}</strong></div>`:''}
         ${dispChip}
+        <a href="${mapsRouteUrl(p)}" target="_blank" rel="noopener" class="meta-chip"
+           style="text-decoration:none;background:rgba(0,113,200,.08);border:1px solid rgba(0,113,200,.3);color:var(--clayton-blue);font-weight:600;cursor:pointer"
+           title="Opens the full round trip in Google Maps: home base → outbound → backhaul → home base">
+          🗺️ View route in Google Maps ↗
+        </a>
       </div>
+      ${(()=>{ const k=pairKey(p); const fb=feedback[k]||{}; const opts=[['Strong Valid Pair','#7CA83A'],['Requires Review','#0071C8'],['Not Feasible','#C0392B']];
+      return `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-light);display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Planner call:</span>
+        ${opts.map(([label,color])=>`<button onclick="setPairStatus('${k}','${label}');this.closest('.pair-card').querySelectorAll('[data-fbbtn]').forEach(b=>b.style.cssText=b.getAttribute('data-base'));var on='padding:4px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff';this.style.cssText=on;"
+            data-fbbtn data-base="padding:4px 11px;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color}"
+            style="${fb.status===label?`padding:4px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff`:`padding:4px 11px;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color}`}">${label}</button>`).join('')}
+        <input type="text" placeholder="Why? (e.g. show home, on hold, needs early delivery, A&G preferred)" value="${(fb.note||'').replace(/"/g,'&quot;')}"
+          onchange="setPairNote('${k}',this.value)"
+          style="flex:1;min-width:220px;padding:5px 9px;border:1.5px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px"/>
+      </div>`; })()}
     </div>`;
   }).join('');
   }  // end tier loop
@@ -2364,10 +2455,12 @@ function renderPairCards(){
 function filterPairs(){
   const q=document.getElementById('pairSearch').value.toLowerCase();
   const min=+document.getElementById('scoreFilter').value||0;
+  const strongOnly=document.getElementById('queueToggle')?.checked;
   filteredPairs=allPairs.filter(p=>{
     const okS=p.score>=min;
     const okQ=!q||[p.A.shipment,p.B.shipment,p.A.originCity,p.A.destCity,p.B.originCity,p.B.destCity].some(v=>v.toLowerCase().includes(q));
-    return okS&&okQ;
+    const okStrong=!strongOnly||(feedback[pairKey(p)]||{}).status==='Strong Valid Pair';
+    return okS&&okQ&&okStrong;
   });
   renderPairCards();
 }
@@ -2375,6 +2468,35 @@ function filterPairs(){
 // ═══════════════════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// GOOGLE MAPS ROUTE LINK  (full round trip for a pair)
+// Home Base → Outbound Origin → Outbound Dest → Backhaul Origin →
+// Backhaul Dest → Home Base. Lets planners visually validate direction,
+// loaded distance, and distance from home without hand-typing 5 stops.
+// ═══════════════════════════════════════════════════════════════════
+function getHomeBase(){
+  const c=(document.getElementById('homeBaseCity')?.value||'Maryville').trim();
+  const s=(document.getElementById('homeBaseState')?.value||'TN').trim().toUpperCase();
+  return {c,s};
+}
+function mapsRouteUrl(p){
+  const hb=getHomeBase();
+  const stop=(c,s)=>`${c}, ${s}`;
+  const stops=[
+    stop(hb.c,hb.s),                                 // home base
+    stop(p.A.originCity,p.A.originState),            // outbound pickup
+    stop(p.A.destCity,p.A.destState),                // outbound delivery
+    stop(p.B.originCity,p.B.originState),            // backhaul pickup
+    stop(p.B.destCity,p.B.destState),                // backhaul delivery
+    stop(hb.c,hb.s),                                 // return home
+  ].map(encodeURIComponent).join('/');
+  return `https://www.google.com/maps/dir/${stops}`;
+}
+function onHomeBaseChange(){
+  // Re-render pair cards so their map links pick up the new home base.
+  if(typeof filteredPairs!=='undefined' && filteredPairs && filteredPairs.length) renderPairCards();
+}
+
 function exportCSV(){
   if(!allPairs.length){toast('No pairs to export');return;}
   const hdr=['Mode','Match #','Score','Grade','Outbound Shipment','Out Prod Date','Out Ship Date','Out Origin City','Out Origin State','Out Dest City','Out Dest State','Backhaul Shipment','Back Prod Date','Back Ship Date','Back Origin City','Back Origin State','Back Dest City','Back Dest State','Deadhead Miles','Return Miles','Backhaul Miles','Days Apart','Equip Match'];
@@ -2391,6 +2513,89 @@ function exportCSV(){
   ]);
   dlCSV([hdr,...rows],'clayton_connect_backhaul_matches.csv');
   toast('✓ Matches exported');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXCEL EXPORT  (dispatch-ready .xlsx via SheetJS, already loaded)
+// Clean, copy/paste-friendly table for emailing opportunities to dispatch:
+// pair recommendation, origin/destination detail, mileage impacts,
+// recommended ship date, a clickable round-trip map link, and a comment column.
+// ═══════════════════════════════════════════════════════════════════
+function exportExcel(){
+  if(!allPairs.length){toast('No pairs to export');return;}
+  if(typeof XLSX==='undefined'){toast('Excel library not loaded — use CSV');return;}
+  const hb=getHomeBase();
+  const modeLabel = currentMode==='all'?'All Valid Pairs':'Best Assignment';
+  const d=v=>v?new Date(v).toLocaleDateString('en-US'):'';
+
+  const header=[
+    'Match #','Score','Grade','Tier',
+    'Outbound Shipment','Out Origin','Out Destination','Out Prod Date','Out Ship Date',
+    'Backhaul Shipment','Back Origin','Back Destination','Back Prod Date','Rec. Ship Date',
+    'Deadhead (mi)','Return to Origin (mi)','Backhaul Length (mi)','Days Apart','Equipment',
+    'Google Maps Route','Planner Status','Planner Comment'
+  ];
+  const tierName=t=>t==='loop'?'Loop':t==='backhaul'?'Backhaul':'Match';
+  const aoa=[header];
+  allPairs.forEach((p,i)=>{
+    // Recommended ship date: prefer the pair's effective/derived date, else the outbound ship date.
+    const recShip = p.B.effectiveDate||p.B.date||p.A.effectiveDate||p.A.date;
+    const fb = feedback[pairKey(p)]||{};
+    aoa.push([
+      i+1, p.score, p.score>=80?'Excellent':p.score>=55?'Good':'Fair', tierName(p._tier),
+      p.A.shipment, `${p.A.originCity}, ${p.A.originState}`, `${p.A.destCity}, ${p.A.destState}`, d(p.A.prodDate), d(p.A.date),
+      p.B.shipment, `${p.B.originCity}, ${p.B.originState}`, `${p.B.destCity}, ${p.B.destState}`, d(p.B.prodDate), d(recShip),
+      p.deadheadMiles, p.returnMiles, p.bHaulMiles||'', p.dateDiff!==null?Math.round(p.dateDiff):'',
+      (p.A.equipment&&p.B.equipment)?(p.A.equipment===p.B.equipment?'Match':'Different'):(p.A.equipment||p.B.equipment||''),
+      mapsRouteUrl(p), fb.status||'', fb.note||''
+    ]);
+  });
+
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  // Column widths for readability
+  ws['!cols']=[
+    {wch:7},{wch:6},{wch:9},{wch:9},
+    {wch:18},{wch:22},{wch:22},{wch:12},{wch:12},
+    {wch:18},{wch:22},{wch:22},{wch:12},{wch:13},
+    {wch:12},{wch:16},{wch:16},{wch:10},{wch:12},
+    {wch:42},{wch:14},{wch:30}
+  ];
+  ws['!freeze']={xSplit:0,ySplit:1};
+  // Turn the Google Maps column into real clickable hyperlinks
+  const mapsCol=19; // 0-based index of 'Google Maps Route'
+  for(let r=1;r<aoa.length;r++){
+    const addr=XLSX.utils.encode_cell({r, c:mapsCol});
+    if(ws[addr]&&ws[addr].v){ ws[addr].l={Target:ws[addr].v, Tooltip:'Open round-trip route'}; ws[addr].v='Open route ↗'; }
+  }
+  // Autofilter across the header
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:aoa.length-1,c:header.length-1}})};
+
+  // Summary sheet
+  const avgDH = allPairs.length?Math.round(allPairs.reduce((a,p)=>a+p.deadheadMiles,0)/allPairs.length):0;
+  const totalBH = allPairs.reduce((a,p)=>a+(p.bHaulMiles||0),0);
+  const strong = Object.values(feedback).filter(f=>f.status==='Strong Valid Pair').length;
+  const meta=[
+    ['Clayton Connect — Backhaul Opportunities'],
+    ['Generated', new Date().toLocaleString('en-US')],
+    ['Mode', modeLabel],
+    ['Home Base', `${hb.c}, ${hb.s}`],
+    [],
+    ['Total pairs', allPairs.length],
+    ['Excellent (≥80)', allPairs.filter(p=>p.score>=80).length],
+    ['Good (55–79)', allPairs.filter(p=>p.score>=55&&p.score<80).length],
+    ['Avg deadhead (mi)', avgDH],
+    ['Total backhaul miles captured', totalBH],
+    ['Marked "Strong Valid Pair"', strong],
+  ];
+  const wsm=XLSX.utils.aoa_to_sheet(meta);
+  wsm['!cols']=[{wch:30},{wch:34}];
+
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, wsm, 'Summary');
+  XLSX.utils.book_append_sheet(wb, ws, 'Backhaul Matches');
+  const stamp=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Clayton_Connect_Backhaul_Matches_${stamp}.xlsx`);
+  toast('✓ Excel exported — ready for dispatch');
 }
 
 function exportAnalyticsCSV(){
@@ -2461,32 +2666,103 @@ function renderUnresolvedCities(){
 
   // Update tab with count badge
   const btn = document.getElementById('tab-unresolved');
-  btn.innerHTML = `Unresolved Cities <span style="background:#C0392B;color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${rows.length}</span>`;
+  btn.innerHTML = `Unresolved Locations <span style="background:#C0392B;color:white;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${rows.length}</span>`;
+
+  // Stash the current unresolved rows so the inline fix handlers can find them
+  window._unresolvedRows = rows;
 
   el.innerHTML = `
+    <div class="info-strip" style="margin-bottom:14px">
+      <strong>${rows.length} location${rows.length!==1?'s':''} couldn't be placed on the map.</strong>
+      Fix one here and it's remembered permanently on this computer — you won't have to
+      correct it on future OTM uploads. Use <em>Correct spelling</em> for typos/abbreviations
+      (it re-looks-up automatically), or <em>Enter coordinates</em> to pin a lat/long directly.
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr>
           <th>City</th><th>State</th><th>Used As</th>
-          <th>Affected Shipments</th><th>Sample IDs</th>
+          <th style="text-align:center">Shipments</th><th>Sample IDs</th><th style="text-align:right">Fix</th>
         </tr></thead>
         <tbody>
-          ${rows.map(r=>`<tr>
+          ${rows.map((r,i)=>`<tr id="unrow-${i}">
             <td><strong>${r.city}</strong></td>
             <td>${r.state}</td>
             <td style="color:var(--text-muted)">${[...r.roles].join(' & ')}</td>
             <td style="text-align:center"><span class="tag tag-blue">${r.ids.length}</span></td>
             <td style="color:var(--text-muted);font-size:12px">${r.ids.slice(0,3).join(', ')}${r.ids.length>3?` +${r.ids.length-3} more`:''}</td>
-          </tr>`).join('')}
+            <td style="text-align:right"><button class="btn btn-ghost" style="padding:5px 12px;font-size:12px" onclick="openFixRow(${i})">Fix ▾</button></td>
+          </tr>
+          <tr id="unfix-${i}" style="display:none"><td colspan="6" style="background:var(--sky-20);padding:14px 16px">
+            <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end">
+              <div class="field" style="margin:0">
+                <label>Correct spelling / actual city</label>
+                <input type="text" id="fixcity-${i}" value="${r.city}" style="min-width:200px" placeholder="e.g. WINSTON-SALEM"/>
+                <div class="hint">Fixes typos & abbreviations, then re-looks-up the map coordinates.</div>
+              </div>
+              <button class="btn btn-primary" style="padding:9px 16px" onclick="applyFixSpelling(${i})">Re-lookup</button>
+              <div style="width:1px;align-self:stretch;background:var(--border);margin:0 2px"></div>
+              <div class="field" style="margin:0">
+                <label>…or enter coordinates directly</label>
+                <div style="display:flex;gap:8px">
+                  <input type="text" id="fixlat-${i}" style="width:120px" placeholder="Latitude"/>
+                  <input type="text" id="fixlng-${i}" style="width:120px" placeholder="Longitude"/>
+                </div>
+                <div class="hint">Decimal degrees, e.g. 36.0999, -80.2442 (right-click a spot in Google Maps to copy).</div>
+              </div>
+              <button class="btn btn-secondary" style="padding:9px 16px" onclick="applyFixCoords(${i})">Pin coordinates</button>
+            </div>
+            <div id="fixmsg-${i}" style="margin-top:8px;font-size:12px"></div>
+          </td></tr>`).join('')}
         </tbody>
       </table>
     </div>
     <div style="margin-top:12px;font-size:12px;color:var(--text-muted)">
-      ${rows.length} unique city/state combinations could not be geocoded.
-      These shipments are excluded from matching.
+      ${rows.length} unique location(s) unmatched — these shipments are excluded from matching until fixed.
       ${document.getElementById('geocodeBanner')?'<strong style="color:var(--clayton-blue)">Geocoding still in progress — check back shortly.</strong>':''}
     </div>
   `;
+}
+
+// ── Unresolved Locations: inline fix handlers ──────────────────────
+function openFixRow(i){
+  const row=document.getElementById('unfix-'+i);
+  if(row) row.style.display = row.style.display==='none' ? 'table-row' : 'none';
+}
+function _fixDone(i){
+  const msg=document.getElementById('fixmsg-'+i);
+  if(msg){ msg.innerHTML='<span style="color:var(--success-dk);font-weight:600">✓ Saved & remembered. Re-matching…</span>'; }
+  toast('✓ Location fixed and saved for future uploads');
+  // Re-run the full match with the new coordinate in place. runMatching() ends by
+  // re-rendering results, analytics, and this Unresolved panel (the row drops off).
+  setTimeout(()=>runMatching(), 40);
+}
+async function applyFixSpelling(i){
+  const rows=window._unresolvedRows||[];
+  const rec=rows[i]; if(!rec) return;
+  const newCity=(document.getElementById('fixcity-'+i).value||'').trim();
+  const msg=document.getElementById('fixmsg-'+i);
+  if(!newCity){ if(msg) msg.innerHTML='<span style="color:#C0392B">Enter a city name.</span>'; return; }
+  if(msg) msg.innerHTML='<span style="color:var(--text-muted)">Looking up '+newCity+', '+rec.state+'…</span>';
+  const coords = getCoordsLocal(newCity, rec.state) || await geocodeCity(newCity, rec.state);
+  if(!coords){ if(msg) msg.innerHTML='<span style="color:#C0392B">Couldn\'t find “'+newCity+', '+rec.state+'”. Check spelling or enter coordinates instead.</span>'; return; }
+  // Persist BOTH the corrected spelling's key AND the original bad key → same coords,
+  // so the original OTM value resolves next time without re-typing.
+  saveCityOverride(normCity(newCity, rec.state), coords);
+  saveCityOverride(normCity(rec.city, rec.state), coords);
+  _fixDone(i);
+}
+function applyFixCoords(i){
+  const rows=window._unresolvedRows||[];
+  const rec=rows[i]; if(!rec) return;
+  const lat=parseFloat(document.getElementById('fixlat-'+i).value);
+  const lng=parseFloat(document.getElementById('fixlng-'+i).value);
+  const msg=document.getElementById('fixmsg-'+i);
+  if(!isFinite(lat)||!isFinite(lng)||lat<15||lat>72||lng<-170||lng>-50){
+    if(msg) msg.innerHTML='<span style="color:#C0392B">Enter a valid US lat/long (e.g. 36.0999, -80.2442).</span>'; return;
+  }
+  saveCityOverride(normCity(rec.city, rec.state), [lat,lng]);
+  _fixDone(i);
 }
 
 function exportUnresolvedCSV(){
