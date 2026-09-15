@@ -36,6 +36,7 @@
     --accent-hover:   #0060AD;
     --success:        var(--clayton-green);
     --success-dk:     #7CA83A;
+    --leg-purple:     #7C5AA6;   /* accent for Return Home leg only — not a brand color */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -354,53 +355,106 @@
   .pair-card.grade-good      { border-left-color: var(--clayton-blue); }
   .pair-card.grade-fair      { border-left-color: var(--sky-blue); }
 
-  .pair-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-  .pair-id   { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .5px; text-transform: uppercase; }
-  .pair-ships { font-size: 14px; font-weight: 700; color: var(--navy); margin-top: 2px; }
+  .pair-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+  .pair-id   { font-size: 13px; font-weight: 800; color: var(--clayton-blue); letter-spacing: .3px; text-transform: uppercase; display: flex; align-items: center; flex-wrap: wrap; }
+  .pair-ships { font-size: 19px; font-weight: 700; color: var(--navy); margin-top: 3px; }
+  .pair-subline { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .pair-subline strong { color: var(--navy); font-weight: 600; }
 
   .score-wrap { display: flex; align-items: center; gap: 10px; }
   .score-track { width: 100px; height: 6px; background: var(--sky-40); border-radius: 3px; overflow: hidden; }
   .score-fill  { height: 100%; border-radius: 3px; transition: width .4s; }
-  .score-num   { font-size: 22px; font-weight: 700; }
-  .score-label { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; text-align: right; margin-top: 2px; }
+  .score-num   { font-size: 30px; font-weight: 800; line-height: 1; }
+  .score-label { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; text-align: right; margin-top: 3px; }
 
-  .pair-lanes { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
-  .lane-box {
+  /* ══ MATCH BODY — outbound / return stop cards + leg breakdown ══ */
+  .match-body { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+
+  .stop-box {
     background: var(--sky-20);
     border: 1px solid var(--border-light);
-    border-radius: 6px;
-    padding: 12px 16px;
-    flex: 1;
-    min-width: 200px;
+    border-radius: 8px;
+    padding: 14px 16px;
+    flex: 1 1 240px;
+    min-width: 230px;
   }
-  .lane-box.backhaul {
+  .stop-box.stop-return {
     background: rgba(153,191,78,.07);
     border-color: rgba(153,191,78,.35);
   }
-  .lane-type  { font-size: 9px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 5px; }
-  .lane-route { font-size: 16px; font-weight: 700; color: var(--navy); line-height: 1.3; margin-bottom: 4px; }
-  .lane-meta  { font-size: 11px; color: var(--text-muted); }
-
-  .dh-bridge {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 3px; padding: 6px 4px; flex-shrink: 0;
+  .stop-label { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 10px; }
+  .stop-main { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .stop-icon {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid;
   }
-  .dh-line  { width: 2px; height: 16px; background: var(--border); }
-  .dh-miles { font-size: 11px; font-weight: 700; color: var(--clayton-blue); white-space: nowrap; }
-  .dh-label { font-size: 9px; color: var(--text-muted); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
-
-  .pair-meta { display: flex; gap: 20px; flex-wrap: wrap; }
-  .meta-chip { font-size: 12px; color: var(--text-muted); }
-  .meta-chip strong { color: var(--navy); margin-left: 3px; }
-
-  /* ══ WEIGHT INDICATOR ══ */
-  .weight-total {
-    font-size: 13px; font-weight: 600;
-    padding: 7px 14px; border-radius: 6px;
-    display: inline-block; margin-top: 10px;
+  .stop-icon svg { width: 22px; height: 22px; }
+  .stop-info { flex: 1.3 1 150px; min-width: 150px; }
+  .stop-route { font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.35; }
+  .stop-route-sub { display: block; font-weight: 700; }
+  .stop-serial { font-size: 12.5px; font-weight: 700; color: var(--text-muted); margin-top: 6px; }
+  .stop-model  { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+  .stop-dates {
+    flex: 1 1 140px; min-width: 140px;
+    border-left: 1px dashed var(--border-light); padding-left: 12px;
+    display: flex; flex-direction: column; gap: 8px; justify-content: center;
   }
-  .weight-ok  { background: rgba(153,191,78,.12); color: var(--success-dk); border: 1px solid rgba(153,191,78,.3); }
-  .weight-bad { background: rgba(200,80,60,.08);  color: #C0392B; border: 1px solid rgba(200,80,60,.2); }
+  .stop-detail-line { font-size: 11.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+  .stop-detail-line svg { flex-shrink: 0; }
+  .stop-detail-ship { color: var(--clayton-blue); font-weight: 700; }
+  .stop-detail-offline { color: var(--text-muted); font-weight: 600; }
+
+  .leg-panel {
+    background: var(--white);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 14px 16px;
+    flex: 1.2 1 280px;
+    min-width: 270px;
+  }
+  .leg-title { font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+  .leg-row { display: flex; align-items: center; gap: 9px; padding: 5px 0; }
+  .leg-badge {
+    width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff;
+  }
+  .leg-badge-1 { background: var(--clayton-blue); }
+  .leg-badge-d { background: var(--text-muted); }
+  .leg-badge-2 { background: var(--clayton-green); }
+  .leg-badge-h { background: var(--leg-purple); }
+  .leg-name { font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; width: 108px; flex-shrink: 0; }
+  .leg-name-1 { color: var(--clayton-blue); }
+  .leg-name-d { color: var(--text-muted); }
+  .leg-name-2 { color: var(--success-dk); }
+  .leg-name-h { color: var(--leg-purple); }
+  .leg-route { font-size: 12px; color: var(--text-muted); flex: 1; }
+  .leg-mi { font-size: 12.5px; font-weight: 700; color: var(--navy); white-space: nowrap; text-align: right; }
+
+  .leg-totals { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+  .leg-total-item { flex: 1; min-width: 60px; }
+  .leg-total-lbl { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--clayton-blue); }
+  .leg-total-val { font-size: 15px; font-weight: 800; color: var(--navy); margin-top: 2px; }
+  .leg-total-highlight { background: rgba(0,113,200,.08); border: 1px solid rgba(0,113,200,.25); border-radius: 6px; padding: 5px 9px; }
+
+  /* ══ PLANNER NOTES ROW ══ */
+  .planner-row { padding-top: 12px; border-top: 1px dashed var(--border-light); }
+  .planner-label { font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; }
+  .planner-note-input {
+    width: 100%; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 12.5px; color: var(--navy); outline: none; margin-bottom: 9px;
+  }
+  .planner-note-input:focus { border-color: var(--clayton-blue); }
+  .planner-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .planner-btn {
+    flex: 1 1 150px; text-align: center; white-space: nowrap;
+    padding: 7px 12px; font-size: 11.5px; font-weight: 700; border-radius: 6px;
+    cursor: pointer; border: 1.5px solid; background: #fff; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .planner-btn-maps { border-color: var(--border); color: var(--text-muted); }
+  .planner-btn-maps:hover { border-color: var(--clayton-blue); color: var(--clayton-blue); }
 
   /* ══ EMPTY STATE ══ */
   .empty { text-align: center; padding: 52px 24px; color: var(--text-muted); background: var(--white); border-radius: 8px; border: 1px solid var(--border-light); }
@@ -503,8 +557,8 @@
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
     <div class="info-strip" style="flex:1;margin-bottom:0">
       Upload your outbound shipments and the Backhaul Matcher finds return loads that reduce empty miles.
-      The engine scores every candidate pair on deadhead distance, return proximity to origin, and date windows —
-      then ranks results so your team can act fast.
+      Every candidate pair is ranked on the same basis — the percentage of the round trip run loaded vs. empty —
+      so results are consistent no matter who's running the match.
     </div>
     <a href="Backhaul_Template.xlsx" download
        style="display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
@@ -665,26 +719,18 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Scoring Weights</div>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Adjust how the algorithm prioritizes each factor. Weights must total exactly 100.</p>
-    <div class="params-grid">
-      <div class="field">
-        <label>Deadhead Distance — <span id="w1v" style="color:var(--clayton-blue)">40%</span></label>
-        <input type="range" id="w1" min="0" max="100" value="40" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
-        <div class="hint">Prioritize shorter empty miles from drop to next pickup</div>
-      </div>
-      <div class="field">
-        <label>Return to Origin — <span id="w2v" style="color:var(--clayton-blue)">35%</span></label>
-        <input type="range" id="w2" min="0" max="100" value="35" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
-        <div class="hint">Prioritize backhauls that drop closer to the home origin</div>
-      </div>
-      <div class="field">
-        <label>Date Proximity — <span id="w3v" style="color:var(--clayton-blue)">25%</span></label>
-        <input type="range" id="w3" min="0" max="100" value="25" oninput="syncWeights()" style="width:100%;accent-color:var(--clayton-blue)"/>
-        <div class="hint">Prioritize backhauls that ship sooner after the outbound delivery</div>
-      </div>
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="M7 15l4-6 4 4 5-8"/></svg>
+      Match Scoring — Loaded Mile %
     </div>
-    <div id="weightTotal" class="weight-total weight-ok">✓ Weights total 100%</div>
+    <div style="background:rgba(0,113,200,.05);border-radius:6px;padding:12px 14px;font-size:12px;color:var(--navy);line-height:1.7">
+      Every match is scored the same way for every planner: the share of the full round trip
+      (home → outbound delivery → backhaul pickup → backhaul delivery → home) run loaded instead of empty.
+      <div style="margin:10px 0;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--white);border:1px solid var(--border-light);border-radius:4px;padding:9px 11px;color:var(--text-muted)">
+        Loaded % = (Stop 1→2 mi + Stop 3→4 mi) ÷ (Stop 1→2 + Stop 2→3 + Stop 3→4 + Stop 4→5 mi)
+      </div>
+      Loaded-leg miles (Stop 1→2 and Stop 3→4) use each shipment's OTM billed miles when the source file has them; deadhead legs (Stop 2→3 and Stop 4→5) use the same air-mile estimate used everywhere else in the tool. This replaced the old adjustable deadhead/return/date weighting, which let different planners land on different rankings for the same data — everyone now compares matches on the same basis. The Deadhead/Return/Days filters above are unchanged; they still control which pairs qualify as candidates before scoring.
+    </div>
   </div>
 </div>
 
@@ -1390,6 +1436,28 @@ function haversine(a,b,c,d){const R=3958.8,r=Math.PI/180,dL=(c-a)*r,dN=(d-b)*r;c
 function distanceMiles(c1,s1,c2,s2){const a=getCoords(c1,s1),b=getCoords(c2,s2);if(!a||!b)return null;return Math.round(haversine(a[0],a[1],b[0],b[1]));}
 
 // ═══════════════════════════════════════════════════════════════════
+// MATCH SCORING — % of the round trip run loaded vs empty
+// Replaces the old adjustable deadhead/return/date weighting. That system
+// let different planners reach different rankings for the same data by
+// moving the sliders; this gives everyone the same number for the same pair.
+//   Loaded    = Stop1→Stop2 (A's own leg) + Stop3→Stop4 (B's own leg)
+//   Deadhead  = Stop2→Stop3 (dh) + Stop4→Stop5 (ret)
+//   Score     = Loaded ÷ (Loaded + Deadhead) × 100
+// Loaded-leg miles prefer each shipment's OTM billed miles when the source
+// file provided them (see billedMiles in parseOtmExport/parseTemplate);
+// otherwise they fall back to the same air-mile estimate used everywhere
+// else (dh/ret/bh — Google Maps miles aren't wired in for this offline tool).
+// dh/ret/bh must already be resolved (non-null) by the caller's guardrails;
+// a null/unresolved loaded leg contributes 0 rather than blocking the score.
+function loadedMileScore(A,B,dh,ret,bh,cachedDist){
+  const leg1 = A.billedMiles!=null ? A.billedMiles : cachedDist(A.originCity,A.originState,A.destCity,A.destState);
+  const leg2 = B.billedMiles!=null ? B.billedMiles : bh;
+  const totalLoaded = (leg1||0)+(leg2||0);
+  const totalMiles  = totalLoaded+(dh||0)+(ret||0);
+  return totalMiles>0 ? Math.round(totalLoaded/totalMiles*100) : 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // NAV
 // ═══════════════════════════════════════════════════════════════════
 function goTo(n){[1,2,3,4].forEach(i=>{document.getElementById('panel'+i).classList.toggle('visible',i===n);const s=document.getElementById('step'+i);s.classList.remove('active','done');if(i<n)s.classList.add('done');if(i===n)s.classList.add('active');});}
@@ -1421,6 +1489,10 @@ function parseOtmExport(aoa, {parseShipmentId, cell}){
 
   const H=aoa[h].map(v=>String(v).trim());
   const at=name=>H.findIndex(x=>x.toLowerCase()===name.toLowerCase());
+  // Tries each literal header candidate in turn; returns the first that exists.
+  // Used for fields whose exact OTM column name we haven't confirmed yet —
+  // safe to guess because a miss just leaves the field blank on the card.
+  const atAny=(...names)=>{ for(const n of names){ const i=at(n); if(i>=0) return i; } return -1; };
   // Anchor on the two "City" columns; origin = first, destination = second.
   const cityIdxs=H.map((x,i)=>x.toLowerCase()==='city'?i:-1).filter(i=>i>=0);
   if(cityIdxs.length<2) return null;
@@ -1434,9 +1506,20 @@ function parseOtmExport(aoa, {parseShipmentId, cell}){
   const cProdA = at('Offline Date');        // fallback if Estimated is blank
   const cDim   = at('Dimension');           // STANDARD / OVERDIM
   const cFloor = at('Floor Count');         // # of physical shipments per order
+  // Serial #/Model # column names haven't been confirmed against a real OTM
+  // export yet — trying the likely candidates; tell us the actual header text
+  // if these come through blank and we'll pin the exact match.
+  const cSerial = atAny('Serial Number','Serial #','Serial No','HUD Serial Number','Home Serial Number','Unit Serial Number');
+  const cModel  = atAny('Model Number','Model #','Model No','Home Model Number');
+  // Loaded-leg mileage should come from OTM's own billed/rated distance for
+  // that order when the export has it — same unconfirmed-header caveat as
+  // Serial/Model above. Falls back to the air-mile estimate when absent.
+  const cMiles  = atAny('Total Distance','Total Miles','Distance','Billed Distance','Billed Miles','Rated Distance','Trip Distance','TOT_DIS');
 
   lastFormatLabel='OTM Outbound';
   const SUFFIX=['A','B','C','D','E','F'];   // one physical load per floor
+  // Strips commas/units ("1,234 mi" → 1234) and returns null on anything unparseable.
+  const numMiles = v => { const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return Number.isFinite(n)?Math.round(n):null; };
   const rows=[];
   aoa.slice(h+1).forEach(row=>{
     const originCity=cell(row[oCity]), destCity=cell(row[dCity]);
@@ -1452,6 +1535,9 @@ function parseOtmExport(aoa, {parseShipmentId, cell}){
       // No trailer column in OTM; tag over-dimensional loads so filters still work.
       equipment:   (cDim>=0 && /overdim/i.test(cell(row[cDim]))) ? 'Over-Dimensional' : '',
       notes:       cNotes>=0 ? cell(row[cNotes]) : '',
+      serial:      cSerial>=0 ? cell(row[cSerial]) : '',
+      model:       cModel>=0  ? cell(row[cModel])  : '',
+      billedMiles: cMiles>=0  ? numMiles(row[cMiles]) : null,
     };
 
     // Floor Count = how many physical shipments this order becomes (a doublewide
@@ -1498,10 +1584,14 @@ function parseTemplate(aoa, {norm, parseShipmentId}){
   const colDestState =findCol('deststate','destinationstate','delivstate','deliverstate','dlvstate');
   const colEquip     =findCol('equipmenttype','equiptype','equipment','equip','trailer');
   const colNotes     =findCol('notes','comment','remarks','note');
+  const colSerial    =findCol('serialnumber','serialno','serial','hudserialnumber','homeserialnumber','unitserialnumber');
+  const colModel     =findCol('modelnumber','modelno','model','homemodelnumber');
+  const colMiles     =findCol('totaldistance','totalmiles','distance','billeddistance','billedmiles','rateddistance','tripdistance','tripmiles','miles');
 
   if(colOrigCity===null||colDestCity===null) return 'NOCOLS';
 
   lastFormatLabel='Backhaul Template';
+  const numMiles = v => { const n=parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,'')); return Number.isFinite(n)?Math.round(n):null; };
   return aoa.slice(headerIdx+1)
     .map(row=>({
       shipment:    colShipment!=null  ? parseShipmentId(row[colShipment])     : '',
@@ -1513,6 +1603,9 @@ function parseTemplate(aoa, {norm, parseShipmentId}){
       destState:   colDestState!=null ? String(row[colDestState]||'').trim() : '',
       equipment:   colEquip!=null     ? String(row[colEquip]||'').trim()     : '',
       notes:       colNotes!=null     ? String(row[colNotes]||'').trim()     : '',
+      serial:      colSerial!=null    ? String(row[colSerial]||'').trim()    : '',
+      model:       colModel!=null     ? String(row[colModel]||'').trim()     : '',
+      billedMiles: colMiles!=null     ? numMiles(row[colMiles])              : null,
     }))
     .filter(r=>r.originCity&&r.destCity&&!SKIP_ROWS.has(r.originCity.toLowerCase())&&!SKIP_ROWS.has(r.destCity.toLowerCase()))
     .map((r,i)=>({...r,shipment:r.shipment||`SHP-${String(i+1).padStart(5,'0')}`}));
@@ -1733,20 +1826,6 @@ function filterTable(){
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// WEIGHTS
-// ═══════════════════════════════════════════════════════════════════
-function syncWeights(){
-  const w1=+document.getElementById('w1').value,w2=+document.getElementById('w2').value,w3=+document.getElementById('w3').value;
-  document.getElementById('w1v').textContent=w1+'%';
-  document.getElementById('w2v').textContent=w2+'%';
-  document.getElementById('w3v').textContent=w3+'%';
-  const tot=w1+w2+w3,ok=tot===100;
-  const el=document.getElementById('weightTotal');
-  el.textContent=ok?'✓ Weights total 100%':`⚠️ Weights total ${tot}% — must equal 100`;
-  el.className='weight-total '+(ok?'weight-ok':'weight-bad');
-}
-
-// ═══════════════════════════════════════════════════════════════════
 // CORE MATCHING ENGINE
 // Accepts a yardHoldDays override so we can run it multiple times
 // for the Missed Opportunities analysis without changing the UI.
@@ -1811,7 +1890,7 @@ function setMode(mode) {
 
 // All-Valid-Pairs: every (A,B) combination that passes filters, no exclusivity
 async function findAllValidPairs(cfg, cachedDist, onProgress) {
-  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
+  const {maxDH,maxRet,maxDays,equipM,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
   const pairs=[];
   const CHUNK=50;
 
@@ -1847,10 +1926,7 @@ async function findAllValidPairs(cfg, cachedDist, onProgress) {
       const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
       if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return null;
     }
-    const dhS=(1-dh/maxDH)*100*(w1/100);
-    const retS=(1-ret/maxRet)*100*(w2/100);
-    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
-    return {score:Math.round(Math.max(0,dhS+retS+dateS)),dh,ret,bh,dateDiff};
+    return {score:loadedMileScore(A,B,dh,ret,bh,cachedDist),dh,ret,bh,dateDiff};
   };
 
   for(let i=0;i<sorted.length;i++){
@@ -1875,14 +1951,12 @@ async function runMatching(){
   const maxDays=+document.getElementById('maxDays').value;
   const equipM =document.getElementById('equipMatch').value;
   const yardHold=+document.getElementById('yardHold').value;
-  const w1=+document.getElementById('w1').value,w2=+document.getElementById('w2').value,w3=+document.getElementById('w3').value;
-  if(w1+w2+w3!==100){toast('⚠️ Weights must total 100');return;}
 
   const minBackhaul=+document.getElementById('minBackhaul').value||0;
   const maxBackhaul=+document.getElementById('maxBackhaul').value||99999;
   const minOriginSep=+document.getElementById('minOriginSep').value||0;
   const requireDisplacement=document.getElementById('requireDisplacement').value==='yes';
-  const cfg={maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul,maxBackhaul,minOriginSep,requireDisplacement};
+  const cfg={maxDH,maxRet,maxDays,equipM,yardHold,minBackhaul,maxBackhaul,minOriginSep,requireDisplacement};
   const n = shipments.length;
 
   // Disable the button while running
@@ -2004,7 +2078,7 @@ async function runMatching(){
 
 // Async greedy matcher — yields to UI every CHUNK_SIZE outer iterations
 async function matchShipmentsAsync(cfg, cachedDist, onProgress) {
-  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true} = cfg;
+  const {maxDH,maxRet,maxDays,equipM,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true} = cfg;
   const pairs=[], matched=new Set();
   const CHUNK = 50; // yield every 50 outer iterations
 
@@ -2049,10 +2123,7 @@ async function matchShipmentsAsync(cfg, cachedDist, onProgress) {
       const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
       if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return null;
     }
-    const dhS=(1-dh/maxDH)*100*(w1/100);
-    const retS=(1-ret/maxRet)*100*(w2/100);
-    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
-    return {score:Math.round(Math.max(0,dhS+retS+dateS)),dh,ret,bh,dateDiff};
+    return {score:loadedMileScore(A,B,dh,ret,bh,cachedDist),dh,ret,bh,dateDiff};
   };
 
   for(let i=0;i<sorted.length;i++){
@@ -2086,7 +2157,7 @@ async function matchShipmentsAsync(cfg, cachedDist, onProgress) {
 
 // Async swap-improvement — yields every CHUNK pair comparisons
 async function swapImproveAsync(pairs, cfg, cachedDist, onProgress) {
-  const {maxDH,maxRet,maxDays,equipM,w1,w2,w3,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
+  const {maxDH,maxRet,maxDays,equipM,yardHold,minBackhaul=0,maxBackhaul=99999,minOriginSep=50,requireDisplacement=true}=cfg;
   const MAX_PASSES=10, CHUNK=500;
   let improved=true, passCount=0;
 
@@ -2113,10 +2184,7 @@ async function swapImproveAsync(pairs, cfg, cachedDist, onProgress) {
       const distAfterB = cachedDist(B.destCity,B.destState,A.originCity,A.originState);
       if(distAfterA!==null && distAfterB!==null && distAfterB >= distAfterA) return -1;
     }
-    const dhS=(1-dh/maxDH)*100*(w1/100);
-    const retS=(1-ret/maxRet)*100*(w2/100);
-    const dateS=dateDiff!==null?(1-dateDiff/maxDays)*100*(w3/100):50*(w3/100);
-    return Math.round(Math.max(0,dhS+retS+dateS));
+    return loadedMileScore(A,B,dh,ret,bh,cachedDist);
   };
 
   while(improved && passCount<MAX_PASSES){
@@ -2413,77 +2481,139 @@ function renderPairCards(){
       :p.score>=55
       ?{color:'var(--clayton-blue)', fill:'var(--clayton-blue)', label:'Good',     cls:'grade-good'}
       :{color:'var(--text-muted)',   fill:'var(--sky-blue)',     label:'Fair',     cls:'grade-fair'};
-    const prodA = p.A.prodDate ? `<span style="color:var(--text-muted);font-size:11px"> · Produced ${fmtDate(p.A.prodDate)}</span>` : '';
-    const prodB = p.B.prodDate ? `<span style="color:var(--text-muted);font-size:11px"> · Produced ${fmtDate(p.B.prodDate)}</span>` : '';
     // Tier badge config for the card
     const tierBadge = p._tier==='loop'
       ? `<span style="background:rgba(153,191,78,.15);color:var(--success-dk);border:1px solid rgba(153,191,78,.4);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">🔁 LOOP</span>`
       : p._tier==='backhaul'
       ? `<span style="background:rgba(0,113,200,.1);color:var(--clayton-blue);border:1px solid rgba(0,113,200,.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">↩ BACKHAUL</span>`
       : `<span style="background:rgba(100,100,100,.08);color:var(--text-muted);border:1px solid #ccc;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">→ MATCH</span>`;
+    const box2Label = p._tier==='loop' ? 'RETURN' : p._tier==='backhaul' ? 'BACKHAUL' : 'NEXT LOAD';
 
-    // Net displacement info
-    const distAfterA = distanceMiles(p.A.destCity,p.A.destState,p.A.originCity,p.A.originState);
-    const distAfterB = distanceMiles(p.B.destCity,p.B.destState,p.A.originCity,p.A.originState);
-    const dispChip = (distAfterA&&distAfterB)
-      ? `<div class="meta-chip" style="color:${distAfterB<distAfterA?'var(--success-dk)':'#C0392B'}">
-           Distance to origin after B:<strong>${distAfterB} mi</strong>
-           <span style="font-size:10px">(was ${distAfterA} mi after outbound)</span>
-         </div>`
-      : '';
+    // Small subline preserving equipment-match / days-apart context that used
+    // to live in the meta-chip row, now that row is replaced by Leg Breakdown.
+    const subBits=[];
+    if(p.dateDiff!==null) subBits.push(`${Math.round(p.dateDiff)} day${Math.round(p.dateDiff)!==1?'s':''} apart`);
+    if(p.A.equipment&&p.B.equipment) subBits.push(p.A.equipment===p.B.equipment?'✓ Equipment match':'≠ Equipment differs');
+    const subline = subBits.length ? `<div class="pair-subline">${subBits.join(' &nbsp;·&nbsp; ')}</div>` : '';
+
+    // ── Per-leg mileage breakdown ──
+    // Leg 1: outbound pickup → outbound delivery (loaded)
+    // Leg D: outbound delivery → backhaul pickup (deadhead)
+    // Leg 2: backhaul pickup → backhaul delivery (loaded)
+    // Leg H: backhaul delivery → home/origin (empty return)
+    // Loaded legs prefer each shipment's OTM billed miles (same source the
+    // score itself uses — see loadedMileScore); falls back to the air-mile
+    // estimate when the file didn't have it, tagged so planners can tell.
+    const leg1Air = distanceMiles(p.A.originCity,p.A.originState,p.A.destCity,p.A.destState);
+    const leg1  = p.A.billedMiles!=null ? p.A.billedMiles : leg1Air;
+    const leg1Src = p.A.billedMiles!=null ? 'billed' : 'air mi. est.';
+    const legD  = p.deadheadMiles;
+    const leg2Air = p.bHaulMiles;
+    const leg2  = p.B.billedMiles!=null ? p.B.billedMiles : leg2Air;
+    const leg2Src = p.B.billedMiles!=null ? 'billed' : 'air mi. est.';
+    const legH  = p.returnMiles;
+    const totalLoaded   = (leg1||0)+(leg2||0);
+    const totalDeadhead = (legD||0)+(legH||0);
+    const totalRoute    = totalLoaded+totalDeadhead;
+    const loadedPct     = totalRoute>0 ? Math.round(totalLoaded/totalRoute*100) : null;
+    const mi = v => v!=null ? `${v} mi` : '—';
+    const srcTag = s => `<span style="font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.3px;margin-left:5px">(${s})</span>`;
+
+    const ICON_CAL='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+    const ICON_FACT_SM='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21V9l6 4V9l6 4V5l6 4v12H2Z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>';
+    const ICON_FACT_LG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 21V9l6 4V9l6 4V5l6 4v12H2Z"/><line x1="2" y1="21" x2="22" y2="21"/></svg>';
+
+    // Serial #/Model # — blank on any row until the source file's columns are
+    // confirmed and mapped (see parseOtmExport/parseTemplate); the line is
+    // simply omitted rather than shown empty.
+    const stopBox = (s, boxClass, labelColor, iconColor, iconBg, iconBorder) => `
+      <div class="stop-box ${boxClass}">
+        <div class="stop-label" style="color:${labelColor}">${boxClass==='stop-return'?box2Label:'OUTBOUND'}</div>
+        <div class="stop-main">
+          <div class="stop-icon" style="color:${iconColor};background:${iconBg};border-color:${iconBorder}">${ICON_FACT_LG}</div>
+          <div class="stop-info">
+            <div class="stop-route">${s.originCity}, ${s.originState}<span class="stop-route-sub">→ ${s.destCity}, ${s.destState}</span></div>
+            ${s.serial?`<div class="stop-serial">Serial #: ${s.serial}</div>`:''}
+            ${s.model?`<div class="stop-model">Model #: ${s.model}</div>`:''}
+          </div>
+          <div class="stop-dates">
+            <div class="stop-detail-line stop-detail-ship">${ICON_CAL} Suggested Ship: ${fmtDate(s.effectiveDate||s.date)}</div>
+            <div class="stop-detail-line stop-detail-offline">${ICON_FACT_SM} Offline: ${fmtDate(s.prodDate)}</div>
+          </div>
+        </div>
+      </div>`;
 
     return `<div class="pair-card ${g.cls}">
       <div class="pair-header">
         <div>
           <div class="pair-id">
-            ${p.multiMode?'Opportunity':'Match'} ${idx+1}${tierBadge}
+            ${p.multiMode?'Opportunity':'Match'} #${idx+1}${tierBadge}
             ${p.multiMode?`<span style="font-size:10px;background:rgba(0,113,200,.12);color:var(--clayton-blue);padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:500">ALL PAIRS</span>`:''}
           </div>
-          <div class="pair-ships">${p.A.shipment} → ${p.B.shipment}</div>
+          <div class="pair-ships">${p.A.shipment} &gt; ${p.B.shipment}</div>
+          ${subline}
         </div>
         <div style="text-align:right">
           <div class="score-wrap">
             <div class="score-track"><div class="score-fill" style="width:${p.score}%;background:${g.fill}"></div></div>
-            <span class="score-num" style="color:${g.color}">${p.score}</span>
           </div>
+          <div class="score-num" style="color:${g.color}">${p.score}%</div>
           <div class="score-label" style="color:${g.color}">${g.label}</div>
         </div>
       </div>
-      <div class="pair-lanes">
-        <div class="lane-box">
-          <div class="lane-type" style="color:var(--clayton-blue)">Outbound · ${p.A.shipment}</div>
-          <div class="lane-route">${p.A.originCity}, ${p.A.originState} → ${p.A.destCity}, ${p.A.destState}</div>
-          <div class="lane-meta">${fmtDate(p.A.effectiveDate||p.A.date)}${prodA}${p.A.equipment?' · '+p.A.equipment:''}</div>
-        </div>
-        <div class="dh-bridge"><div class="dh-line"></div><div class="dh-miles">${p.deadheadMiles} mi</div><div class="dh-label">deadhead</div><div class="dh-line"></div></div>
-        <div class="lane-box backhaul">
-          <div class="lane-type" style="color:var(--success-dk)">${p._tier==='loop'?'Loop Return':'Backhaul'} · ${p.B.shipment}</div>
-          <div class="lane-route">${p.B.originCity}, ${p.B.originState} → ${p.B.destCity}, ${p.B.destState}</div>
-          <div class="lane-meta">${fmtDate(p.B.effectiveDate||p.B.date)}${prodB}${p.B.equipment?' · '+p.B.equipment:''}</div>
+
+      <div class="match-body">
+        ${stopBox(p.A,'stop-outbound','var(--clayton-blue)','var(--clayton-blue)','rgba(0,113,200,.06)','rgba(0,113,200,.3)')}
+        ${stopBox(p.B,'stop-return','var(--success-dk)','var(--success-dk)','rgba(153,191,78,.1)','rgba(153,191,78,.4)')}
+        <div class="leg-panel">
+          <div class="leg-title">Leg Breakdown</div>
+          <div class="leg-row">
+            <span class="leg-badge leg-badge-1">1</span>
+            <span class="leg-name leg-name-1">Loaded Leg 1</span>
+            <span class="leg-route">${p.A.originCity}, ${p.A.originState} → ${p.A.destCity}, ${p.A.destState}</span>
+            <span class="leg-mi">${mi(leg1)}${leg1!=null?srcTag(leg1Src):''}</span>
+          </div>
+          <div class="leg-row">
+            <span class="leg-badge leg-badge-d">D</span>
+            <span class="leg-name leg-name-d">Deadhead Leg</span>
+            <span class="leg-route">${p.A.destCity}, ${p.A.destState} → ${p.B.originCity}, ${p.B.originState}</span>
+            <span class="leg-mi">${mi(legD)}</span>
+          </div>
+          <div class="leg-row">
+            <span class="leg-badge leg-badge-2">2</span>
+            <span class="leg-name leg-name-2">Loaded Leg 2</span>
+            <span class="leg-route">${p.B.originCity}, ${p.B.originState} → ${p.B.destCity}, ${p.B.destState}</span>
+            <span class="leg-mi">${mi(leg2)}${leg2!=null?srcTag(leg2Src):''}</span>
+          </div>
+          <div class="leg-row">
+            <span class="leg-badge leg-badge-h">H</span>
+            <span class="leg-name leg-name-h">Return Home</span>
+            <span class="leg-route">${p.B.destCity}, ${p.B.destState} → ${p.A.originCity}, ${p.A.originState}</span>
+            <span class="leg-mi">${mi(legH)}</span>
+          </div>
+          <div class="leg-totals">
+            <div class="leg-total-item"><div class="leg-total-lbl">Total Loaded</div><div class="leg-total-val">${mi(totalLoaded)}</div></div>
+            <div class="leg-total-item"><div class="leg-total-lbl">Total Deadhead</div><div class="leg-total-val">${mi(totalDeadhead)}</div></div>
+            <div class="leg-total-item"><div class="leg-total-lbl">Total Route</div><div class="leg-total-val">${mi(totalRoute)}</div></div>
+            <div class="leg-total-item leg-total-highlight"><div class="leg-total-lbl">Loaded Mile %</div><div class="leg-total-val">${loadedPct!=null?loadedPct+'%':'—'}</div></div>
+          </div>
         </div>
       </div>
-      <div class="pair-meta">
-        <div class="meta-chip">Deadhead:<strong>${p.deadheadMiles} mi</strong></div>
-        <div class="meta-chip">Return to origin:<strong>${p.returnMiles} mi</strong></div>
-        ${p.bHaulMiles?`<div class="meta-chip">Backhaul length:<strong>${p.bHaulMiles} mi</strong></div>`:''}
-        ${p.dateDiff!==null?`<div class="meta-chip">Days apart:<strong>${Math.round(p.dateDiff)}</strong></div>`:''}
-        ${p.A.equipment&&p.B.equipment?`<div class="meta-chip">Equipment:<strong>${p.A.equipment===p.B.equipment?'✓ Match':'≠ Different'}</strong></div>`:''}
-        ${dispChip}
-        <a href="${mapsRouteUrl(p)}" target="_blank" rel="noopener" class="meta-chip"
-           style="text-decoration:none;background:rgba(0,113,200,.08);border:1px solid rgba(0,113,200,.3);color:var(--clayton-blue);font-weight:600;cursor:pointer"
-           title="Opens the full round trip in Google Maps: home base → outbound → backhaul → home base">
-          🗺️ View route in Google Maps ↗
-        </a>
-      </div>
-      ${(()=>{ const k=pairKey(p); const fb=feedback[k]||{}; const opts=[['Strong Valid Pair','#7CA83A'],['Requires Review','#0071C8'],['Not Feasible','#C0392B']];
-      return `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-light);display:flex;flex-wrap:wrap;align-items:center;gap:8px">
-        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Planner call:</span>
-        ${opts.map(([label,color])=>`<button onclick="setPairStatus('${k}','${label}');this.closest('.pair-card').querySelectorAll('[data-fbbtn]').forEach(b=>b.style.cssText=b.getAttribute('data-base'));var on='padding:4px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff';this.style.cssText=on;"
-            data-fbbtn data-base="padding:4px 11px;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color}"
-            style="${fb.status===label?`padding:4px 11px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff`:`padding:4px 11px;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color}`}">${label}</button>`).join('')}
-        <input type="text" placeholder="Why? (e.g. show home, on hold, needs early delivery, A&G preferred)" value="${(fb.note||'').replace(/"/g,'&quot;')}"
-          onchange="setPairNote('${k}',this.value)"
-          style="flex:1;min-width:220px;padding:5px 9px;border:1.5px solid var(--border);border-radius:5px;font-family:inherit;font-size:12px"/>
+
+      ${(()=>{ const k=pairKey(p); const fb=feedback[k]||{}; const opts=[['Strong Valid Pair','#7CA83A','👍'],['Requires Review','#0071C8','ℹ️'],['Not Feasible','#C0392B','👎']];
+      return `<div class="planner-row">
+        <div class="planner-label">Planner Notes</div>
+        <input type="text" class="planner-note-input" placeholder="Add notes about this match (e.g., delivery constraints, customer notes, early delivery needs)" value="${(fb.note||'').replace(/"/g,'&quot;')}"
+          onchange="setPairNote('${k}',this.value)"/>
+        <div class="planner-actions">
+          ${opts.map(([label,color,icon])=>`<button class="planner-btn" onclick="setPairStatus('${k}','${label}');this.closest('.pair-card').querySelectorAll('[data-fbbtn]').forEach(b=>b.style.cssText=b.getAttribute('data-base'));var on='flex:1 1 150px;text-align:center;white-space:nowrap;padding:7px 12px;font-size:11.5px;font-weight:700;border-radius:6px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px';this.style.cssText=on;"
+              data-fbbtn data-base="flex:1 1 150px;text-align:center;white-space:nowrap;padding:7px 12px;font-size:11.5px;font-weight:700;border-radius:6px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color};display:inline-flex;align-items:center;justify-content:center;gap:6px"
+              style="${fb.status===label?`flex:1 1 150px;text-align:center;white-space:nowrap;padding:7px 12px;font-size:11.5px;font-weight:700;border-radius:6px;cursor:pointer;border:1.5px solid ${color};background:${color};color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px`:`flex:1 1 150px;text-align:center;white-space:nowrap;padding:7px 12px;font-size:11.5px;font-weight:700;border-radius:6px;cursor:pointer;border:1.5px solid ${color};background:#fff;color:${color};display:inline-flex;align-items:center;justify-content:center;gap:6px`}">${icon} ${label}</button>`).join('')}
+          <a href="${mapsRouteUrl(p)}" target="_blank" rel="noopener" class="planner-btn planner-btn-maps"
+             title="Opens the full round trip in Google Maps: home base → outbound → backhaul → home base">
+            🗺️ View Full Route in Google Maps ↗
+          </a>
+        </div>
       </div>`; })()}
     </div>`;
   }).join('');
