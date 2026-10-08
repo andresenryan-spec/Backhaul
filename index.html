@@ -456,6 +456,50 @@
   .planner-btn-maps { border-color: var(--border); color: var(--text-muted); }
   .planner-btn-maps:hover { border-color: var(--clayton-blue); color: var(--clayton-blue); }
 
+  /* ══ RESULTS VIEW SWITCH (Best Loaded % ↔ Soonest Offline) ══ */
+  .view-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .view-bar-lbl { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); }
+  .seg { display: inline-flex; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--white); }
+  .seg-btn {
+    font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text-muted);
+    background: transparent; border: none; padding: 8px 16px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; transition: background .15s, color .15s;
+  }
+  .seg-btn + .seg-btn { border-left: 1.5px solid var(--border); }
+  .seg-btn:hover { color: var(--clayton-blue); }
+  .seg-btn.active { background: var(--clayton-blue); color: var(--white); }
+  .view-hint { font-size: 12px; color: var(--text-muted); }
+  .time-only { display: none !important; }
+  body.view-time .time-only { display: inline-flex !important; }
+  body.view-time select.time-only { display: inline-block !important; }
+  .filter-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--navy); cursor: pointer; white-space: nowrap; }
+  .filter-check input { width: 15px; height: 15px; cursor: pointer; }
+
+  /* Time-sensitive summary + day group headers */
+  .time-summary {
+    background: rgba(212,160,23,.08); border: 1px solid rgba(212,160,23,.3); border-left: 4px solid #D4A017;
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: var(--navy); line-height: 1.6;
+  }
+  .time-summary .ts-counts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .ts-chip { background: var(--white); border: 1px solid var(--border-light); border-radius: 20px; padding: 2px 11px; font-size: 12px; font-weight: 700; color: var(--navy); }
+  .day-group { margin: 22px 0 8px; }
+  .day-group:first-child { margin-top: 0; }
+  .day-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .day-date { font-size: 15px; font-weight: 800; color: var(--navy); }
+  .day-rel { font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; border-radius: 4px; padding: 1px 8px; border: 1px solid; }
+  .day-meta { font-size: 12px; color: var(--text-muted); }
+  .day-rule { height: 2px; background: var(--border-light); border-radius: 1px; margin-bottom: 14px; }
+
+  /* Urgency + availability chips on each match card */
+  .pair-chip { border-radius: 4px; padding: 1px 7px; font-size: 10px; font-weight: 700; margin-left: 6px; letter-spacing: .2px; text-transform: none; white-space: nowrap; border: 1px solid; }
+  .urg-past  { background: rgba(192,57,43,.08);  color: #C0392B;            border-color: rgba(192,57,43,.3); }
+  .urg-soon  { background: rgba(212,160,23,.12); color: #9A6F00;            border-color: rgba(212,160,23,.4); }
+  .urg-later { background: var(--sky-20);        color: var(--text-muted);  border-color: var(--border); }
+  .flag-taken { background: rgba(212,160,23,.12); color: #9A6F00; border-color: rgba(212,160,23,.4); }
+  .flag-done  { background: rgba(2,45,77,.06);    color: var(--navy);       border-color: var(--border); }
+  .pair-card.pair-resolved { opacity: .5; }
+  .pair-card.pair-resolved:hover { opacity: .8; }
+
   /* ══ EMPTY STATE ══ */
   .empty { text-align: center; padding: 52px 24px; color: var(--text-muted); background: var(--white); border-radius: 8px; border: 1px solid var(--border-light); }
   .empty .icon { font-size: 40px; margin-bottom: 12px; }
@@ -517,7 +561,7 @@
   </div>
   <div class="header-right">
     <span class="header-pill">Freight Intelligence</span>
-    <span class="header-pill" style="background:rgba(153,191,78,.15);border-color:rgba(153,191,78,.5);color:var(--success-dk)" title="Confirm this matches the latest build so you know the newest city fixes are loaded">Build 2026-08-26c · 1404 cities</span>
+    <span class="header-pill" style="background:rgba(153,191,78,.15);border-color:rgba(153,191,78,.5);color:var(--success-dk)" title="Confirm this matches the latest build so you know the newest city fixes are loaded">Build 2026-10-08a · 1404 cities</span>
   </div>
 </header>
 
@@ -765,6 +809,14 @@
   <!-- MATCHES TAB -->
   <div id="tabpanel-matches">
     <div class="stats" id="resultStats"></div>
+    <div class="view-bar">
+      <span class="view-bar-lbl">Prioritize by</span>
+      <div class="seg" role="group" aria-label="Results view">
+        <button type="button" class="seg-btn active" id="viewBtn-score" onclick="setPairView('score')" title="Grouped by Loop / Backhaul / Other, highest Loaded % first">🏆 Best Loaded %</button>
+        <button type="button" class="seg-btn" id="viewBtn-time" onclick="setPairView('time')" title="Open matches by the first offline date in the pair, soonest first">⏱ Soonest Offline</button>
+      </div>
+      <span class="view-hint" id="viewHint">Grouped by tier, highest Loaded % first</span>
+    </div>
     <div class="filter-bar">
       <input type="text" id="pairSearch" placeholder="Filter by city or shipment #…" oninput="filterPairs()"/>
       <select id="scoreFilter" onchange="filterPairs()">
@@ -772,12 +824,23 @@
         <option value="80">Excellent (≥ 80)</option>
         <option value="55">Good (≥ 55)</option>
       </select>
-      <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--navy);cursor:pointer;white-space:nowrap">
-        <input type="checkbox" id="queueToggle" onchange="filterPairs()" style="width:15px;height:15px;cursor:pointer"/>
+      <select id="offlineWindow" class="time-only" onchange="onTimeControlChange()" title="Limit to pairs whose first home goes offline in this window (Mon–Sun weeks)">
+        <option value="all">All offline dates</option>
+        <option value="this">This week</option>
+        <option value="next">Next week</option>
+        <option value="both">This week + next week</option>
+      </select>
+      <label class="filter-check time-only" title="Hides pairs marked Strong Valid Pair or Not Feasible, and pairs where either shipment is already in a Strong Valid Pair">
+        <input type="checkbox" id="openOnlyToggle" checked onchange="onTimeControlChange()"/>
+        Open matches only
+      </label>
+      <label class="filter-check">
+        <input type="checkbox" id="queueToggle" onchange="filterPairs()"/>
         ⭐ Strong pairs queue
         <span id="queueChip" style="display:none;align-items:center;background:var(--clayton-green);color:#fff;border-radius:10px;padding:1px 8px;font-size:11px"><span id="queueCount">0</span></span>
       </label>
     </div>
+    <div id="timeSummary"></div>
     <div id="pairList"></div>
     <div id="unmatchedSection" style="display:none">
       <div class="divider"></div>
@@ -846,6 +909,10 @@ function saveFeedback(){ try{ localStorage.setItem(FEEDBACK_KEY, JSON.stringify(
 function setPairStatus(key, status){
   feedback[key]=feedback[key]||{}; feedback[key].status=status; saveFeedback();
   updateQueueCount();
+  // Re-flag rendered cards in place (no re-render, so nothing jumps under the
+  // planner's cursor). In the Soonest Offline view a card that's just been
+  // booked/ruled out dims, as do other cards that share one of its shipments.
+  refreshPairFlags();
 }
 function setPairNote(key, note){
   feedback[key]=feedback[key]||{}; feedback[key].note=note; saveFeedback();
@@ -857,6 +924,141 @@ function updateQueueCount(){
   const wrap=document.getElementById('queueChip');
   if(wrap) wrap.style.display = n?'inline-flex':'none';
 }
+
+// ── RESULTS VIEW: Best Loaded % ↔ Soonest Offline ──────────────────
+// 'score' = the original tiered view (Loop / Backhaul / Other, Loaded % desc).
+// 'time'  = matches ordered by the pair's FIRST offline date — the earlier of
+//           the two homes' offline dates, i.e. the load that needs a plan
+//           first — grouped by day, highest Loaded % first within each day.
+//           Built for working next week's pairs that score lower (55–60%)
+//           but are on the clock. Defaults to open matches only.
+// View / window / open-only choices are remembered per browser.
+const VIEW_PREF_KEY='claytonBackhaul.viewPrefs.v1';
+let pairView='score';
+let _renderedByKey=new Map();   // pairKey → pair, for the cards currently on screen
+let _timeStats={};
+
+const DAY_MS=86400000;
+function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function daysFromToday(d){ return Math.round((startOfDay(d)-startOfDay(new Date()))/DAY_MS); }
+function weekStartOf(d){ const x=startOfDay(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; } // Monday
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function fmtShort(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function fmtRange(a,bExcl){ const b=addDays(bExcl,-1); return a.getMonth()===b.getMonth() ? `${fmtShort(a)}–${b.getDate()}` : `${fmtShort(a)}–${fmtShort(b)}`; }
+
+// Earlier of the two homes' offline dates (falls back to whichever exists).
+function pairFirstOffline(p){
+  const a=p.A.prodDate, b=p.B.prodDate;
+  if(!a&&!b) return null;
+  if(a&&(!b||a<=b)) return {date:a, leg:'Outbound', shipment:p.A.shipment};
+  return {date:b, leg:'Backhaul', shipment:p.B.shipment};
+}
+// Mon–Sun calendar weeks. Returns [start, endExclusive] or null for "all".
+function offlineWindowRange(win){
+  const wk=weekStartOf(new Date());
+  if(win==='this') return [wk, addDays(wk,7)];
+  if(win==='next') return [addDays(wk,7), addDays(wk,14)];
+  if(win==='both') return [wk, addDays(wk,14)];
+  return null;
+}
+function labelWindowOptions(){
+  const sel=document.getElementById('offlineWindow'); if(!sel) return;
+  const wk=weekStartOf(new Date());
+  const txt={all:'All offline dates',
+             this:`This week (${fmtRange(wk,addDays(wk,7))})`,
+             next:`Next week (${fmtRange(addDays(wk,7),addDays(wk,14))})`,
+             both:`This + next week (${fmtRange(wk,addDays(wk,14))})`};
+  [...sel.options].forEach(o=>{ if(txt[o.value]) o.textContent=txt[o.value]; });
+}
+function relDayLabel(n){
+  if(n===0) return 'Today';
+  if(n===1) return 'Tomorrow';
+  if(n===-1) return 'Yesterday';
+  return n>0 ? `In ${n} days` : `${-n} days ago`;
+}
+function urgencyClass(n){ return n<0?'urg-past':n<=3?'urg-soon':'urg-later'; }
+
+// "Open" = still needs a planner decision: not marked Strong Valid Pair or
+// Not Feasible, and neither shipment is already committed in some OTHER pair
+// marked Strong Valid Pair (feedback persists across runs, so this also
+// catches loads paired off in an earlier session). Requires Review stays open.
+function strongCommitments(){
+  const m=new Map();
+  for(const [k,f] of Object.entries(feedback)){
+    if(!f||f.status!=='Strong Valid Pair') continue;
+    k.split('__').forEach(s=>{ if(!s) return; if(!m.has(s)) m.set(s,new Set()); m.get(s).add(k); });
+  }
+  return m;
+}
+function pairOpenState(p, commits){
+  const k=pairKey(p), st=(feedback[k]||{}).status;
+  if(st==='Strong Valid Pair') return {open:false, why:'strong'};
+  if(st==='Not Feasible')      return {open:false, why:'nf'};
+  const taken=[p.A.shipment,p.B.shipment].filter(s=>{ const ks=commits.get(s); return ks&&[...ks].some(x=>x!==k); });
+  if(taken.length) return {open:false, why:'taken', taken};
+  return {open:true};
+}
+function pairFlagHtml(st){
+  if(st.why==='taken')  return `<span class="pair-chip flag-taken" title="This shipment is already in a pair marked Strong Valid Pair">🔒 ${st.taken.join(' & ')} already paired</span>`;
+  if(st.why==='strong') return `<span class="pair-chip flag-done">✓ Marked Strong</span>`;
+  if(st.why==='nf')     return `<span class="pair-chip flag-done">✕ Not Feasible</span>`;
+  return '';
+}
+// Open-only applies in the Soonest Offline view, and steps aside while the
+// Strong pairs queue is on (the two would otherwise cancel each other out).
+function isOpenOnlyActive(){
+  return pairView==='time'
+    && !!document.getElementById('openOnlyToggle')?.checked
+    && !document.getElementById('queueToggle')?.checked;
+}
+// Updates flag chips + dimming on cards already on screen, without re-rendering.
+function refreshPairFlags(){
+  const commits=strongCommitments();
+  const dimClosed=isOpenOnlyActive();
+  document.querySelectorAll('#pairList .pair-card[data-pair-key]').forEach(card=>{
+    const p=_renderedByKey.get(card.getAttribute('data-pair-key')); if(!p) return;
+    const st=pairOpenState(p,commits);
+    const slot=card.querySelector('.pair-flag'); if(slot) slot.innerHTML=pairFlagHtml(st);
+    card.classList.toggle('pair-resolved', dimClosed && !st.open);
+  });
+}
+
+function loadViewPrefs(){
+  try{
+    const v=JSON.parse(localStorage.getItem(VIEW_PREF_KEY))||{};
+    if(v.view==='time'||v.view==='score') pairView=v.view;
+    const w=document.getElementById('offlineWindow');
+    if(w&&v.window&&[...w.options].some(o=>o.value===v.window)) w.value=v.window;
+    const o=document.getElementById('openOnlyToggle');
+    if(o&&typeof v.openOnly==='boolean') o.checked=v.openOnly;
+  }catch(e){}
+  applyViewChrome();
+}
+function saveViewPrefs(){
+  try{ localStorage.setItem(VIEW_PREF_KEY, JSON.stringify({
+    view:pairView,
+    window:document.getElementById('offlineWindow')?.value||'all',
+    openOnly:!!document.getElementById('openOnlyToggle')?.checked,
+  })); }catch(e){}
+}
+function applyViewChrome(){
+  document.body.classList.toggle('view-time', pairView==='time');
+  ['score','time'].forEach(v=>{
+    const b=document.getElementById('viewBtn-'+v);
+    if(b){ b.classList.toggle('active',v===pairView); b.setAttribute('aria-pressed', v===pairView?'true':'false'); }
+  });
+  const h=document.getElementById('viewHint');
+  if(h) h.textContent = pairView==='time'
+    ? 'Earliest offline date first · highest Loaded % first within each day'
+    : 'Grouped by tier, highest Loaded % first';
+  labelWindowOptions();
+}
+function setPairView(v){
+  if(v===pairView) return;
+  pairView=v; applyViewChrome(); saveViewPrefs();
+  if(allPairs.length){ filterPairs(); document.getElementById('pairSearch')?.scrollIntoView({block:'nearest'}); }
+}
+function onTimeControlChange(){ saveViewPrefs(); filterPairs(); }
 
 // ═══════════════════════════════════════════════════════════════════
 // CITY COORDINATE DB — 500+ US cities (Haversine straight-line miles)
@@ -2277,6 +2479,13 @@ function renderResults(matched){
   // Classify pairs into tiers
   const tierCounts = {loop:0, backhaul:0, move:0};
   allPairs.forEach(p=>{ p._tier = classifyPair(p); tierCounts[p._tier]++; });
+  // Stable Match # (= score rank, same as the export) + first offline date
+  // for the Soonest Offline view.
+  allPairs.forEach((p,i)=>{
+    p._rank = i+1;
+    p._off = pairFirstOffline(p);
+    p._offDay = p._off ? startOfDay(p._off.date).getTime() : null;
+  });
 
   const pairedLabel   = isAllMode ? 'Shipments in ≥1 Pair' : 'Loads Paired';
   const pairsLabel    = isAllMode ? 'Valid Pairs'           : 'Pairs Found';
@@ -2320,10 +2529,11 @@ function renderResults(matched){
     banner.id='allPairesModeBanner';
     banner.style.cssText='background:rgba(0,113,200,.07);border:1px solid rgba(0,113,200,.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--navy);line-height:1.6';
     banner.innerHTML='<strong>All Valid Pairs mode:</strong> Every shipment pairing that meets your parameters is shown. A shipment may appear in multiple rows — one per potential backhaul partner. Use this to explore options; dispatchers can choose which to book.';
-    document.getElementById('pairList').before(banner);
+    document.getElementById('timeSummary').before(banner);
   }
-  filteredPairs=[...allPairs];
-  renderPairCards();
+  // Apply whatever view + filters are currently set (previously a re-run
+  // reset the list to all pairs even while a search/score filter was showing).
+  filterPairs();
   if(unmatched.length){
     document.getElementById('unmatchedSection').style.display='block';
     document.getElementById('unmatchedBody').innerHTML=unmatched.map(s=>`<tr>
@@ -2446,8 +2656,20 @@ function renderAnalytics(baseHold){
 
 function renderPairCards(){
   const list=document.getElementById('pairList');
+  _renderedByKey=new Map();
+  renderTimeSummary();
   if(!filteredPairs.length){
-    list.innerHTML=`<div class="empty"><div class="icon">🔍</div><h3>No matches found</h3><p>Try increasing deadhead miles or return-to-origin radius, or expanding your date window.</p></div>`;
+    list.innerHTML = !allPairs.length
+      ? `<div class="empty"><div class="icon">🔍</div><h3>No matches found</h3><p>Try increasing deadhead miles or return-to-origin radius, or expanding your date window.</p></div>`
+      : pairView==='time'
+      ? `<div class="empty"><div class="icon">⏱</div><h3>No open matches in this view</h3><p>Try <strong>All offline dates</strong>, clear the search/score filter, or uncheck <strong>Open matches only</strong> to see pairs already marked.</p></div>`
+      : `<div class="empty"><div class="icon">🔍</div><h3>No matches meet the current filters</h3><p>Clear the search, score filter, or Strong pairs queue to see all ${allPairs.length} pair${allPairs.length!==1?'s':''}.</p></div>`;
+    return;
+  }
+
+  if(pairView==='time'){
+    list.innerHTML = renderTimeGroups();
+    refreshPairFlags();
     return;
   }
 
@@ -2475,7 +2697,86 @@ function renderPairCards(){
         <div style="height:2px;background:${tc.border};border-radius:1px;margin-bottom:14px"></div>
       </div>
     `;
-    html += items.map(({p,idx})=>{
+    html += items.map(({p})=>pairCardHtml(p)).join('');
+  }  // end tier loop
+  list.innerHTML = html;
+  refreshPairFlags();
+}
+
+// ── SOONEST OFFLINE VIEW — day-grouped list ─────────────────────────
+// Sorted by the pair's first offline day (earliest first), then Loaded %
+// (highest first). Pairs with no offline date on either home go last.
+function renderTimeGroups(){
+  const sorted=[...filteredPairs].sort((a,b)=>{
+    const da=a._offDay, db=b._offDay;
+    if(da==null&&db==null) return b.score-a.score;
+    if(da==null) return 1;
+    if(db==null) return -1;
+    return (da-db) || (b.score-a.score);
+  });
+  const groups=new Map();
+  sorted.forEach(p=>{ const k=p._offDay==null?'none':p._offDay; if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(p); });
+
+  let html='';
+  for(const [k,items] of groups){
+    const count=`${items.length} pair${items.length!==1?'s':''}`;
+    let head;
+    if(k==='none'){
+      head=`<span class="day-date">No offline date</span>
+            <span class="day-meta">${count} · source file had no offline date for either home</span>`;
+    } else {
+      const d=new Date(k), n=daysFromToday(d);
+      const avg=Math.round(items.reduce((a,p)=>a+p.score,0)/items.length);
+      head=`<span class="day-date">${d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
+            <span class="day-rel ${urgencyClass(n)}">${relDayLabel(n)}</span>
+            <span class="day-meta">${count} · first home offline · avg ${avg}% loaded</span>`;
+    }
+    html+=`<div class="day-group"><div class="day-head">${head}</div><div class="day-rule"></div></div>`;
+    html+=items.map(pairCardHtml).join('');
+  }
+  return html;
+}
+
+// Banner above the list in the Soonest Offline view: what's shown, how it's
+// ordered, the this-week / next-week split, and what the filters are hiding.
+function renderTimeSummary(){
+  const el=document.getElementById('timeSummary'); if(!el) return;
+  if(pairView!=='time'||!allPairs.length){ el.innerHTML=''; return; }
+  const s=_timeStats||{};
+  const wk=weekStartOf(new Date()), nwk=addDays(wk,7), after=addDays(wk,14);
+  let before=0, thisW=0, nextW=0, later=0, none=0;
+  filteredPairs.forEach(p=>{
+    if(p._offDay==null){ none++; return; }
+    if(p._offDay<wk.getTime()) before++;
+    else if(p._offDay<nwk.getTime()) thisW++;
+    else if(p._offDay<after.getTime()) nextW++;
+    else later++;
+  });
+  const chip=(label,n)=>n>0?`<span class="ts-chip">${label}: ${n}</span>`:'';
+  const notes=[];
+  if(s.openOnly && s.hiddenClosed) notes.push(`${s.hiddenClosed} hidden as already paired or Not Feasible`);
+  if(s.win && s.hiddenWindow)      notes.push(`${s.hiddenWindow} outside the selected offline window`);
+  if(s.openOnlyPaused)             notes.push('Open-only is paused while the Strong pairs queue is on');
+  const n=filteredPairs.length;
+  el.innerHTML=`<div class="time-summary">
+      <strong>⏱ Soonest Offline:</strong> ${n} ${s.openOnly?'open ':''}match${n!==1?'es':''}, ordered by the
+      <strong>first offline date</strong> in each pair (the earlier of the outbound and backhaul home), highest Loaded % first within each day.
+      ${notes.length?`<span style="color:var(--text-muted)"> ${notes.join(' · ')}.</span>`:''}
+      <div class="ts-counts">
+        ${chip('Before this week',before)}
+        ${chip(`This week (${fmtRange(wk,nwk)})`,thisW)}
+        ${chip(`Next week (${fmtRange(nwk,after)})`,nextW)}
+        ${chip('Later',later)}
+        ${chip('No offline date',none)}
+      </div>
+    </div>`;
+}
+
+// One match card — shared by both views. Match # is the pair's rank in the
+// full score-ordered list (same number as the Excel/CSV export), so a pair
+// keeps its number when the planner switches views or filters.
+function pairCardHtml(p){
+    _renderedByKey.set(pairKey(p), p);
     const g=p.score>=80
       ?{color:'var(--success-dk)',   fill:'var(--clayton-green)',label:'Excellent',cls:'grade-excellent'}
       :p.score>=55
@@ -2488,6 +2789,13 @@ function renderPairCards(){
       ? `<span style="background:rgba(0,113,200,.1);color:var(--clayton-blue);border:1px solid rgba(0,113,200,.3);border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">↩ BACKHAUL</span>`
       : `<span style="background:rgba(100,100,100,.08);color:var(--text-muted);border:1px solid #ccc;border-radius:4px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:6px">→ MATCH</span>`;
     const box2Label = p._tier==='loop' ? 'RETURN' : p._tier==='backhaul' ? 'BACKHAUL' : 'NEXT LOAD';
+    // Countdown to the pair's first offline date (both views)
+    let urgChip='';
+    if(p._off){
+      const n=daysFromToday(p._off.date);
+      const txt = n===0 ? 'Offline today' : n>0 ? `Offline in ${n}d` : `Offline ${-n}d ago`;
+      urgChip=`<span class="pair-chip ${urgencyClass(n)}" title="First offline: ${p._off.leg} ${p._off.shipment} on ${fmtDate(p._off.date)}">⏱ ${txt}</span>`;
+    }
 
     // Small subline preserving equipment-match / days-apart context that used
     // to live in the meta-chip row, now that row is replaced by Leg Breakdown.
@@ -2543,12 +2851,12 @@ function renderPairCards(){
         </div>
       </div>`;
 
-    return `<div class="pair-card ${g.cls}">
+    return `<div class="pair-card ${g.cls}" data-pair-key="${pairKey(p).replace(/"/g,'&quot;')}">
       <div class="pair-header">
         <div>
           <div class="pair-id">
-            ${p.multiMode?'Opportunity':'Match'} #${idx+1}${tierBadge}
-            ${p.multiMode?`<span style="font-size:10px;background:rgba(0,113,200,.12);color:var(--clayton-blue);padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:500">ALL PAIRS</span>`:''}
+            ${p.multiMode?'Opportunity':'Match'} #${p._rank}${tierBadge}
+            ${p.multiMode?`<span style="font-size:10px;background:rgba(0,113,200,.12);color:var(--clayton-blue);padding:1px 6px;border-radius:3px;margin-left:4px;font-weight:500">ALL PAIRS</span>`:''}${urgChip}<span class="pair-flag"></span>
           </div>
           <div class="pair-ships">${p.A.shipment} &gt; ${p.B.shipment}</div>
           ${subline}
@@ -2616,21 +2924,30 @@ function renderPairCards(){
         </div>
       </div>`; })()}
     </div>`;
-  }).join('');
-  }  // end tier loop
-  list.innerHTML = html;
 }
 
 function filterPairs(){
   const q=document.getElementById('pairSearch').value.toLowerCase();
   const min=+document.getElementById('scoreFilter').value||0;
   const strongOnly=document.getElementById('queueToggle')?.checked;
+  // Soonest Offline view adds two filters: offline-date window + open only.
+  const timeView=pairView==='time';
+  const openOnly=isOpenOnlyActive();
+  const win=timeView ? offlineWindowRange(document.getElementById('offlineWindow')?.value) : null;
+  const commits=strongCommitments();
+  let hiddenClosed=0, hiddenWindow=0;
   filteredPairs=allPairs.filter(p=>{
     const okS=p.score>=min;
     const okQ=!q||[p.A.shipment,p.B.shipment,p.A.originCity,p.A.destCity,p.B.originCity,p.B.destCity].some(v=>v.toLowerCase().includes(q));
     const okStrong=!strongOnly||(feedback[pairKey(p)]||{}).status==='Strong Valid Pair';
-    return okS&&okQ&&okStrong;
+    if(!(okS&&okQ&&okStrong)) return false;
+    if(win && (p._offDay==null || p._offDay<win[0].getTime() || p._offDay>=win[1].getTime())){ hiddenWindow++; return false; }
+    if(openOnly && !pairOpenState(p,commits).open){ hiddenClosed++; return false; }
+    return true;
   });
+  _timeStats={openOnly, win, hiddenClosed, hiddenWindow,
+              openOnlyPaused: timeView && strongOnly && !!document.getElementById('openOnlyToggle')?.checked};
+  labelWindowOptions();
   renderPairCards();
 }
 
@@ -2955,6 +3272,9 @@ function exportUnresolvedCSV(){
 
 // TOAST
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3600);}
+
+// Restore the planner's last results view (Best Loaded % / Soonest Offline).
+loadViewPrefs();
 </script>
 </body>
 </html>
